@@ -398,6 +398,71 @@ main.card {
   border-left: 2px solid var(--lime);
 }
 
+/* Nav group labels */
+.nav-group-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  padding: 12px 14px 4px;
+}
+
+/* Sub-tabs (used inside Audio pane) */
+.sub-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.sub-tabs::-webkit-scrollbar { display: none; }
+.sub-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-radius: 9px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  border: none;
+  background: none;
+}
+.sub-tab:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.04);
+}
+.sub-tab.active {
+  color: var(--lime);
+  background: rgba(163, 230, 53, 0.08);
+}
+.sub-tab svg {
+  color: currentColor;
+}
+
+/* Section header — consistent across panes */
+.pane-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.pane-header label {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
 /* Buttons */
 .btn {
   appearance: none;

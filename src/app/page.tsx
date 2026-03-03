@@ -7,6 +7,7 @@ import {
   Mic,
   Copy,
   Users,
+  History,
   BookOpen,
   Settings as SettingsIcon,
   Sun,
@@ -65,7 +66,8 @@ const DEFAULT_AGENT_INTRO = "Hi! I'm your assistant. How can I help you today?";
 const DEFAULT_AGENT_SKILLS = "You are a helpful customer support agent. You can answer questions about products, process orders, and handle returns. Be friendly and concise.";
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState("pane-tts");
+  const [activeTab, setActiveTab] = useState("pane-audio");
+  const [audioSubTab, setAudioSubTab] = useState("tts");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [selectedVoice, setSelectedVoice] = useState("");
@@ -306,10 +308,10 @@ export default function Dashboard() {
   }, [user]);
 
   useEffect(() => {
-    if (activeTab === "pane-history") {
+    if (activeTab === "pane-audio" && audioSubTab === "history") {
       fetchRealTimeHistory();
     }
-  }, [activeTab, user, fetchRealTimeHistory]);
+  }, [activeTab, audioSubTab, user, fetchRealTimeHistory]);
 
   const fetchCallLogs = useCallback(async () => {
     setIsCallLogsLoading(true);
@@ -357,15 +359,20 @@ export default function Dashboard() {
   };
 
   const navItems = [
-    { id: "pane-tts", label: "Text to Speech", icon: <AudioWaveform size={18} />, desc: "Generate lifelike speech" },
-    { id: "pane-stt", label: "Speech To Text", icon: <Mic size={18} />, desc: "Transcribe audio to text effortlessly" },
-    { id: "pane-clone", label: "Voice Cloning", icon: <Copy size={18} />, desc: "Instantly clone voices with full metadata tagging" },
-    { id: "pane-agents", label: "Conversational", icon: <Users size={18} />, desc: "Create and connect to AI agents" },
+    { id: "pane-audio", label: "Audio", icon: <AudioWaveform size={18} />, desc: "TTS, STT, Voice Cloning & Library" },
+    { id: "pane-agents", label: "Agents", icon: <Users size={18} />, desc: "Create and connect to AI agents" },
     { id: "pane-call-logs", label: "Call History", icon: <Phone size={18} />, desc: "Playback and transcripts for all calls" },
     { id: "pane-integrations", label: "Integrations", icon: <Plug2 size={18} />, desc: "Connect SMS, Email, CRM and more" },
-    { id: "pane-voices", label: "Voices", icon: <BookOpen size={18} />, desc: "Manage your voice library" },
     { id: "pane-docs", label: "Docs", icon: <FileText size={18} />, desc: "API documentation and test inbound" },
     { id: "pane-settings", label: "Settings", icon: <SettingsIcon size={18} />, desc: "Configure default Echo models and format" },
+  ];
+
+  const audioSubTabs = [
+    { id: "tts", label: "Text to Speech", icon: <AudioWaveform size={15} /> },
+    { id: "stt", label: "Speech to Text", icon: <Mic size={15} /> },
+    { id: "clone", label: "Voice Cloning", icon: <Copy size={15} /> },
+    { id: "voices", label: "Voices", icon: <BookOpen size={15} /> },
+    { id: "history", label: "History", icon: <History size={15} /> },
   ];
 
   useEffect(() => {
@@ -1206,142 +1213,160 @@ export default function Dashboard() {
         </div>
 
         <div className="cardBody">
-          {activeTab === "pane-tts" && (
+          {activeTab === "pane-audio" && (
             <div className="tab-pane active">
-              <div className="field">
-                <label htmlFor="ttsVoiceSelect">Select Voice</label>
-                <select
-                  id="ttsVoiceSelect"
-                  title="Select a voice for synthesis"
-                  value={selectedVoice}
-                  onChange={(e) => setSelectedVoice(e.target.value)}
-                >
-                  {voices.length === 0 ? (
-                    <option value="">Loading voices...</option>
-                  ) : (
-                    voices.map((v) => (
-                      <option key={v.voice_id} value={v.voice_id}>
-                        {v.name} {v.labels?.accent ? `(${v.labels.accent})` : ""}
-                      </option>
-                    ))
-                  )}
-                </select>
+              {/* Sub-tab bar */}
+              <div className="sub-tabs">
+                {audioSubTabs.map((st) => (
+                  <button
+                    key={st.id}
+                    className={`sub-tab${audioSubTab === st.id ? " active" : ""}`}
+                    onClick={() => setAudioSubTab(st.id)}
+                  >
+                    {st.icon} {st.label}
+                  </button>
+                ))}
               </div>
-              <div className="field flex-1">
-                <div className="flex flex-wrap justify-between items-center gap-2 mb-1">
-                  <label htmlFor="ttsText">Text to Synthesize</label>
-                  <div className="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="btn text-2xs"
-                      onClick={() => setTtsText(enhanceTextForTTS(ttsText))}
-                      title="Symbols only: @ → at, . → dot (emails, URLs)"
+
+              {/* TTS Sub-tab */}
+              {audioSubTab === "tts" && (
+                <>
+                  <div className="field">
+                    <label htmlFor="ttsVoiceSelect">Select Voice</label>
+                    <select
+                      id="ttsVoiceSelect"
+                      title="Select a voice for synthesis"
+                      value={selectedVoice}
+                      onChange={(e) => setSelectedVoice(e.target.value)}
                     >
-                      Enhance symbols
-                    </button>
-                    <button
-                      type="button"
-                      className="btn text-2xs text-lime border border-lime/50"
-                      onClick={() => setTtsText(normalizeForTTS(ttsText))}
-                      title="Normalize numbers, currency, phone, abbreviations for speech"
-                    >
-                      Normalize for TTS
-                    </button>
-                    <button
-                      type="button"
-                      className="btn text-2xs"
-                      onClick={() => setTtsText(ttsText + (ttsText.endsWith(" ") ? "" : " ") + BREAK_TAG)}
-                      title="Append [pause]"
-                    >
-                      Add pause
-                    </button>
-                    <button
-                      type="button"
-                      className="btn text-2xs"
-                      onClick={handleEnhanced}
-                      disabled={isEnhancingExpression || !ttsText.trim()}
-                      title="Add nuances for natural speech (no brackets)"
-                    >
-                      {isEnhancingExpression ? <Loader2 size={12} className="animate-spin" /> : "Enhanced"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn text-2xs text-lime border border-lime/50"
-                      onClick={handleAddExpression}
-                      disabled={isEnhancingExpression || !ttsText.trim()}
-                      title="Use AI to add expressive tags"
-                    >
-                      Add expression
-                    </button>
+                      {voices.length === 0 ? (
+                        <option value="">Loading voices...</option>
+                      ) : (
+                        voices.map((v) => (
+                          <option key={v.voice_id} value={v.voice_id}>
+                            {v.name} {v.labels?.accent ? `(${v.labels.accent})` : ""}
+                          </option>
+                        ))
+                      )}
+                    </select>
                   </div>
-                </div>
-                <textarea
-                  id="ttsText"
-                  placeholder="Write natural speech. Add pause with [pause]."
-                  value={ttsText}
-                  onChange={(e) => setTtsText(e.target.value)}
-                ></textarea>
-              </div>
-              <div className="flex gap-2.5 items-center">
-                <button
-                  className="btn primary"
-                  id="btnGenerateTTS"
-                  onClick={handleGenerateTTS}
-                  disabled={isGenerating}
-                >
-                  {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
-                  Generate Speech
-                </button>
-                <span id="ttsStatus" className={`text-xs ${ttsStatus.startsWith("Error") ? "text-bad" : "text-muted"}`}>
-                  {ttsStatus}
-                </span>
-              </div>
-              <div className="audio-output-container">
-                <label className="mb-3 block">Audio Output</label>
-                <audio id="ttsAudio" controls className="w-full" ref={audioRef}></audio>
-              </div>
-            </div>
-          )}
+                  <div className="field flex-1">
+                    <div className="flex flex-wrap justify-between items-center gap-2 mb-1">
+                      <label htmlFor="ttsText">Text to Synthesize</label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          className="btn text-2xs"
+                          onClick={() => setTtsText(enhanceTextForTTS(ttsText))}
+                          title="Symbols only: @ → at, . → dot (emails, URLs)"
+                        >
+                          Enhance symbols
+                        </button>
+                        <button
+                          type="button"
+                          className="btn text-2xs text-lime border border-lime/50"
+                          onClick={() => setTtsText(normalizeForTTS(ttsText))}
+                          title="Normalize numbers, currency, phone, abbreviations for speech"
+                        >
+                          Normalize for TTS
+                        </button>
+                        <button
+                          type="button"
+                          className="btn text-2xs"
+                          onClick={() => setTtsText(ttsText + (ttsText.endsWith(" ") ? "" : " ") + BREAK_TAG)}
+                          title="Append [pause]"
+                        >
+                          Add pause
+                        </button>
+                        <button
+                          type="button"
+                          className="btn text-2xs"
+                          onClick={handleEnhanced}
+                          disabled={isEnhancingExpression || !ttsText.trim()}
+                          title="Add nuances for natural speech (no brackets)"
+                        >
+                          {isEnhancingExpression ? <Loader2 size={12} className="animate-spin" /> : "Enhanced"}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn text-2xs text-lime border border-lime/50"
+                          onClick={handleAddExpression}
+                          disabled={isEnhancingExpression || !ttsText.trim()}
+                          title="Use AI to add expressive tags"
+                        >
+                          Add expression
+                        </button>
+                      </div>
+                    </div>
+                    <textarea
+                      id="ttsText"
+                      placeholder="Write natural speech. Add pause with [pause]."
+                      value={ttsText}
+                      onChange={(e) => setTtsText(e.target.value)}
+                    ></textarea>
+                  </div>
+                  <div className="flex gap-2.5 items-center">
+                    <button
+                      className="btn primary"
+                      id="btnGenerateTTS"
+                      onClick={handleGenerateTTS}
+                      disabled={isGenerating}
+                    >
+                      {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} fill="currentColor" />}
+                      Generate Speech
+                    </button>
+                    <span id="ttsStatus" className={`text-xs ${ttsStatus.startsWith("Error") ? "text-bad" : "text-muted"}`}>
+                      {ttsStatus}
+                    </span>
+                  </div>
+                  <div className="audio-output-container">
+                    <label className="mb-3 block">Audio Output</label>
+                    <audio id="ttsAudio" controls className="w-full" ref={audioRef}></audio>
+                  </div>
+                </>
+              )}
 
-          {activeTab === "pane-stt" && (
-            <div className="tab-pane active">
-              <div className="field">
-                <label htmlFor="sttFile">Audio File</label>
-                <input
-                  type="file"
-                  id="sttFile"
-                  accept="audio/*"
-                  onChange={(e) => setSttFile(e.target.files?.[0] || null)}
-                />
-              </div>
-              <div className="flex gap-2.5 items-center mb-6">
-                <button
-                  className="btn primary"
-                  onClick={handleTranscribe}
-                  disabled={isTranscribing || !sttFile}
-                >
-                  {isTranscribing ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
-                  Transcribe Audio
-                </button>
-                <span className={`text-xs ${sttStatus.includes("Error") || sttStatus === "Failed" ? "text-bad" : "text-muted"}`}>
-                  {sttStatus}
-                </span>
-              </div>
-              <div className="field flex-1">
-                <label htmlFor="sttOutput">Transcription Result</label>
-                <textarea
-                  id="sttOutput"
-                  readOnly
-                  placeholder="Transcription will appear here..."
-                  value={sttOutput}
-                ></textarea>
-              </div>
-            </div>
-          )}
+              {/* STT Sub-tab */}
+              {audioSubTab === "stt" && (
+                <>
+                  <div className="field">
+                    <label htmlFor="sttFile">Audio File</label>
+                    <input
+                      type="file"
+                      id="sttFile"
+                      accept="audio/*"
+                      onChange={(e) => setSttFile(e.target.files?.[0] || null)}
+                    />
+                  </div>
+                  <div className="flex gap-2.5 items-center mb-6">
+                    <button
+                      className="btn primary"
+                      onClick={handleTranscribe}
+                      disabled={isTranscribing || !sttFile}
+                    >
+                      {isTranscribing ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
+                      Transcribe Audio
+                    </button>
+                    <span className={`text-xs ${sttStatus.includes("Error") || sttStatus === "Failed" ? "text-bad" : "text-muted"}`}>
+                      {sttStatus}
+                    </span>
+                  </div>
+                  <div className="field flex-1">
+                    <label htmlFor="sttOutput">Transcription Result</label>
+                    <textarea
+                      id="sttOutput"
+                      readOnly
+                      placeholder="Transcription will appear here..."
+                      value={sttOutput}
+                    ></textarea>
+                  </div>
+                </>
+              )}
 
-          {activeTab === "pane-clone" && (
-            <div className="tab-pane active">
-              <div className="field">
+              {/* Voice Cloning Sub-tab */}
+              {audioSubTab === "clone" && (
+                <>
+                <div className="field">
                 <label htmlFor="cloneName">Voice Name</label>
                 <input
                   type="text"
@@ -1483,13 +1508,141 @@ export default function Dashboard() {
                   {cloneStatus}
                 </span>
               </div>
+              </>
+              )}
+
+              {/* Voices Sub-tab */}
+              {audioSubTab === "voices" && (
+                <>
+                  <div className="pane-header">
+                    <label>Voice Library</label>
+                    <span className="text-2xs text-lime">{voices.length} Voices Available</span>
+                  </div>
+                  <div className="grid grid-3">
+                    {voices.length === 0 ? (
+                      <div className="placeholder-pane h-32 col-span-3">Loading voices…</div>
+                    ) : (
+                      voices.map((v) => (
+                        <div key={v.voice_id} className="card p-5 flex flex-col items-center text-center transition-all group relative overflow-hidden hover:border-lime">
+                          <div className="w-12 h-12 rounded-full bg-limeDim flex items-center justify-center mb-4 group-hover:scale-110 transition-transform relative z-10">
+                            <Volume2 size={20} className="text-lime" />
+                          </div>
+                          <div className="font-bold mb-1 relative z-10 text-sm">{v.name}</div>
+                          <div className="text-2xs text-faint mb-4 relative z-10">
+                            {v.labels?.language || v.labels?.accent || v.category || "General"}
+                          </div>
+                          <button
+                            className="btn primary py-2 w-full text-2xs mt-auto relative z-10"
+                            onClick={() => handlePlayPreview(v.preview_url)}
+                            disabled={!v.preview_url}
+                          >
+                            {v.preview_url ? "Quick Preview" : "No Preview"}
+                          </button>
+                          <div className="absolute inset-0 bg-lime opacity-0 group-hover:opacity-[0.03] transition-opacity"></div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* History Sub-tab */}
+              {audioSubTab === "history" && (
+                <>
+                  <div className="pane-header">
+                    <label>TTS History</label>
+                    {user ? (
+                      <button className="btn text-2xs" onClick={fetchRealTimeHistory}>
+                        <RefreshCw size={12} /> Refresh
+                      </button>
+                    ) : null}
+                  </div>
+                  {!user ? (
+                    <div className="placeholder-pane h-32 flex items-center justify-center text-muted">
+                      Sign in to save and view your TTS history.
+                    </div>
+                  ) : (
+                    <>
+                      {historyAudioUrl && (
+                        <div className="mb-4 p-4 rounded-xl border border-border bg-panel flex items-center gap-4">
+                          <audio
+                            ref={historyAudioRef}
+                            src={historyAudioUrl}
+                            controls
+                            className="flex-1 h-10"
+                            onEnded={() => { setTtsStatus(""); setPlayingHistoryId(null); }}
+                          />
+                          <span className="text-2xs text-muted">Now playing</span>
+                        </div>
+                      )}
+                      <div className="history-list">
+                        {isHistoryLoading ? (
+                          <div className="placeholder-pane h-32 flex items-center justify-center"><Loader2 className="animate-spin" size={24} /></div>
+                        ) : history.length === 0 ? (
+                          <div className="placeholder-pane h-32 flex items-center justify-center text-muted">No TTS history yet. Generate speech to see it here.</div>
+                        ) : (
+                          history.slice(0, 50).map((h) => (
+                            <div key={h.id} className="history-card">
+                              <button
+                                className={`history-play-btn ${playingHistoryId === h.id ? "playing" : ""}`}
+                                onClick={() => handlePlayHistory(h.id)}
+                                title="Play"
+                                aria-label="Play"
+                              >
+                                {playingHistoryId === h.id ? (
+                                  <Volume2 size={26} className="text-inherit" />
+                                ) : (
+                                  <Play size={26} fill="currentColor" className="text-lime" />
+                                )}
+                              </button>
+                              <div className="history-card-body">
+                                <div className="history-card-text" title={h.text}>{h.text}</div>
+                                <div className="history-card-meta">
+                                  <span className="voice-pill">{h.voice_name}</span>
+                                  <span className="history-card-date">{new Date(h.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                                </div>
+                              </div>
+                              <div className="history-card-actions">
+                                <button
+                                  className="history-card-action"
+                                  onClick={() => { setTtsText(h.text); setSelectedVoice(h.voice_id); setAudioSubTab("tts"); }}
+                                  title="Re-synthesize"
+                                >
+                                  <AudioWaveform size={16} />
+                                </button>
+                                <div className="relative" ref={downloadMenuId === h.id ? downloadMenuRef : undefined}>
+                                  <button
+                                    className="history-card-action"
+                                    onClick={(e) => { e.stopPropagation(); setDownloadMenuId(downloadMenuId === h.id ? null : h.id); }}
+                                    title="Download"
+                                  >
+                                    <Download size={16} />
+                                  </button>
+                                  {downloadMenuId === h.id && (
+                                    <div className="absolute right-0 top-full mt-1 z-20 rounded-lg border border-border bg-panel py-1 min-w-[90px] shadow-xl">
+                                      <button className="block w-full text-left px-4 py-2 text-sm hover:bg-limeDim"
+                                        onClick={() => { handleDownloadHistory(h.id, h.text, "mp3"); setDownloadMenuId(null); }}>MP3</button>
+                                      <button className="block w-full text-left px-4 py-2 text-sm hover:bg-limeDim"
+                                        onClick={() => { handleDownloadHistory(h.id, h.text, "wav"); setDownloadMenuId(null); }}>WAV</button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           )}
 
           {activeTab === "pane-agents" && (
             <div className="tab-pane active">
-              <div className="flex justify-between items-center mb-4">
-                <label className="block">Agents</label>
+              <div className="pane-header">
+                <label>Agents</label>
                 <button
                   type="button"
                   className="btn icon-only"
@@ -1871,8 +2024,8 @@ export default function Dashboard() {
 
           {activeTab === "pane-call-logs" && (
             <div className="tab-pane active">
-              <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-                <label className="block">Call History</label>
+              <div className="pane-header">
+                <label>Call History</label>
                 <div className="flex flex-wrap items-center gap-3">
                   <select
                     value={callLogFilterType}
@@ -2006,10 +2159,10 @@ export default function Dashboard() {
 
           {activeTab === "pane-integrations" && (
             <div className="tab-pane active">
-              <div className="flex justify-between items-center mb-6">
+              <div className="pane-header">
                 <div>
-                  <label className="block">Integrations</label>
-                  <span className="text-2xs text-faint">Connect your Vapi agents to external tools and services</span>
+                  <label>Integrations</label>
+                  <div className="text-2xs text-faint mt-1">Connect your Vapi agents to external tools and services</div>
                 </div>
               </div>
               <div className="integrations-grid">
@@ -2041,43 +2194,6 @@ export default function Dashboard() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "pane-voices" && (
-            <div className="tab-pane active">
-              <div className="flex justify-between items-center mb-6">
-                <label className="block">Voice Library</label>
-                <div className="text-2xs text-lime">{voices.length} Voices Available</div>
-              </div>
-              <div className="grid grid-3">
-                {voices.length === 0 ? (
-                  <div className="placeholder-pane h-32 col-span-3">Loading voices…</div>
-                ) : (
-                  voices.map((v) => (
-                    <div key={v.voice_id} className="card p-5 flex flex-col items-center text-center transition-all group relative overflow-hidden hover:border-lime">
-                      <div className="w-12 h-12 rounded-full bg-limeDim flex items-center justify-center mb-4 group-hover:scale-110 transition-transform relative z-10">
-                        <Volume2 size={20} className="text-lime" />
-                      </div>
-                      <div className="font-bold mb-1 relative z-10 text-sm">{v.name}</div>
-                      <div className="text-2xs text-faint mb-4 relative z-10">
-                         {v.labels?.language || v.labels?.accent || v.category || "General"}
-                      </div>
-                      
-                      <button 
-                        className="btn primary py-2 w-full text-2xs mt-auto relative z-10"
-                        onClick={() => handlePlayPreview(v.preview_url)}
-                        disabled={!v.preview_url}
-                      >
-                        {v.preview_url ? "Quick Preview" : "No Preview"}
-                      </button>
-
-                      {/* Subtle background glow on hover */}
-                      <div className="absolute inset-0 bg-lime opacity-0 group-hover:opacity-[0.03] transition-opacity"></div>
-                    </div>
-                  ))
-                )}
               </div>
             </div>
           )}
@@ -2131,7 +2247,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {!["pane-tts", "pane-stt", "pane-clone", "pane-agents", "pane-call-logs", "pane-integrations", "pane-voices", "pane-docs", "pane-settings"].includes(activeTab) && (
+          {!["pane-audio", "pane-agents", "pane-call-logs", "pane-integrations", "pane-docs", "pane-settings"].includes(activeTab) && (
             <div className="tab-pane active placeholder-pane">
               Coming Soon: {activeItem?.label}
             </div>
