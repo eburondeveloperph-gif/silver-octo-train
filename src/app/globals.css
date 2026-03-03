@@ -2793,6 +2793,172 @@ audio::-webkit-media-controls-time-remaining-display {
   color: #ef4444;
 }
 
+/* ─── Voice Library (ElevenLabs-inspired) ─── */
+.voice-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  margin-bottom: 14px;
+}
+.voice-search-icon {
+  color: var(--faint);
+  flex-shrink: 0;
+}
+.voice-search-input {
+  flex: 1;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--ink);
+  font-size: 14px;
+  min-width: 0;
+}
+.voice-search-input::placeholder {
+  color: var(--faint);
+}
+.voice-filter-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border-radius: 9px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.voice-filter-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.voice-category-pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+  margin-bottom: 20px;
+}
+.voice-category-pills::-webkit-scrollbar { display: none; }
+.voice-category-pill {
+  padding: 7px 16px;
+  border-radius: 20px;
+  border: 1px solid var(--stroke);
+  background: none;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+.voice-category-pill:hover {
+  color: var(--ink);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.voice-category-pill.active {
+  background: var(--ink);
+  color: var(--bg);
+  border-color: var(--ink);
+}
+.voice-section-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin-bottom: 16px;
+}
+.voice-section-header .voice-count {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--faint);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+.voice-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.voice-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.voice-card:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+.voice-card-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.2), rgba(56, 189, 248, 0.15));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--lime);
+  transition: transform 0.2s;
+}
+.voice-card:hover .voice-card-avatar {
+  transform: scale(1.08);
+}
+.voice-card-info {
+  min-width: 0;
+  flex: 1;
+}
+.voice-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.voice-card-category {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+.voice-card-tags {
+  display: flex;
+  gap: 6px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+.voice-tag {
+  font-size: 11px;
+  color: var(--faint);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 1px 8px;
+  border-radius: 8px;
+}
+@media (max-width: 1024px) {
+  .voice-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .voice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ─── Dialer Call Button ─── */
 .dialer-call-btn-round {
   width: 56px;

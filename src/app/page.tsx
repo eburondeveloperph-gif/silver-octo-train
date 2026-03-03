@@ -30,6 +30,8 @@ import {
   Plug2,
   X,
   FileUp,
+  Search,
+  SlidersHorizontal,
 } from "lucide-react";
 
 import OrbitCore from "@vapi-ai/web";
@@ -70,6 +72,8 @@ export default function Dashboard() {
   const [audioSubTab, setAudioSubTab] = useState("tts");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [voices, setVoices] = useState<Voice[]>([]);
+  const [voiceSearch, setVoiceSearch] = useState("");
+  const [voiceCategoryFilter, setVoiceCategoryFilter] = useState("all");
   const [selectedVoice, setSelectedVoice] = useState("");
   const [ttsText, setTtsText] = useState(
     "Okay, you are NOT going to believe this. You know how I've been totally stuck on that short story? Like, staring at the screen for HOURS, just... nothing? I was seriously about to just trash the whole thing. But then! Last night, this one little phrase popped into my head. And it was like... the FLOODGATES opened! It all just CLICKED. I am so incredibly PUMPED. It went from feeling like a chore to feeling like... MAGIC."
@@ -1006,6 +1010,29 @@ export default function Dashboard() {
 
   const activeItem = navItems.find((item) => item.id === activeTab);
 
+  const voiceCategories = useMemo(() => {
+    const cats = new Set(voices.map((v) => v.category || "general"));
+    return ["all", ...Array.from(cats).sort()];
+  }, [voices]);
+
+  const filteredVoices = useMemo(() => {
+    let filtered = voices;
+    if (voiceCategoryFilter !== "all") {
+      filtered = filtered.filter((v) => (v.category || "general") === voiceCategoryFilter);
+    }
+    if (voiceSearch.trim()) {
+      const q = voiceSearch.toLowerCase();
+      filtered = filtered.filter(
+        (v) =>
+          v.name.toLowerCase().includes(q) ||
+          (v.labels?.language || "").toLowerCase().includes(q) ||
+          (v.labels?.accent || "").toLowerCase().includes(q) ||
+          (v.description || "").toLowerCase().includes(q)
+      );
+    }
+    return filtered;
+  }, [voices, voiceCategoryFilter, voiceSearch]);
+
   if (isAuthLoading) {
     return (
       <div className="app bg-black flex items-center justify-center">
@@ -1514,31 +1541,63 @@ export default function Dashboard() {
               {/* Voices Sub-tab */}
               {audioSubTab === "voices" && (
                 <>
-                  <div className="pane-header">
-                    <label>Voice Library</label>
-                    <span className="text-2xs text-lime">{voices.length} Voices Available</span>
+                  {/* Search bar */}
+                  <div className="voice-search-bar">
+                    <Search size={18} className="voice-search-icon" />
+                    <input
+                      type="text"
+                      placeholder="Search library voices..."
+                      value={voiceSearch}
+                      onChange={(e) => setVoiceSearch(e.target.value)}
+                      className="voice-search-input"
+                    />
+                    <button className="voice-filter-btn" title="Filters">
+                      <SlidersHorizontal size={16} /> Filters
+                    </button>
                   </div>
-                  <div className="grid grid-3">
-                    {voices.length === 0 ? (
-                      <div className="placeholder-pane h-32 col-span-3">Loading voices…</div>
+
+                  {/* Category pills */}
+                  <div className="voice-category-pills">
+                    {voiceCategories.map((cat) => (
+                      <button
+                        key={cat}
+                        className={`voice-category-pill${voiceCategoryFilter === cat ? " active" : ""}`}
+                        onClick={() => setVoiceCategoryFilter(cat)}
+                      >
+                        {cat === "all" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Voice grid */}
+                  <div className="voice-section-header">
+                    <span>All voices</span>
+                    <span className="voice-count">{filteredVoices.length}</span>
+                  </div>
+                  <div className="voice-grid">
+                    {filteredVoices.length === 0 ? (
+                      <div className="placeholder-pane h-32 col-span-3 flex items-center justify-center text-muted">
+                        {voices.length === 0 ? "Loading voices…" : "No voices match your search"}
+                      </div>
                     ) : (
-                      voices.map((v) => (
-                        <div key={v.voice_id} className="card p-5 flex flex-col items-center text-center transition-all group relative overflow-hidden hover:border-lime">
-                          <div className="w-12 h-12 rounded-full bg-limeDim flex items-center justify-center mb-4 group-hover:scale-110 transition-transform relative z-10">
-                            <Volume2 size={20} className="text-lime" />
+                      filteredVoices.map((v) => (
+                        <div
+                          key={v.voice_id}
+                          className="voice-card"
+                          onClick={() => handlePlayPreview(v.preview_url)}
+                        >
+                          <div className="voice-card-avatar">
+                            <Volume2 size={18} />
                           </div>
-                          <div className="font-bold mb-1 relative z-10 text-sm">{v.name}</div>
-                          <div className="text-2xs text-faint mb-4 relative z-10">
-                            {v.labels?.language || v.labels?.accent || v.category || "General"}
+                          <div className="voice-card-info">
+                            <div className="voice-card-name">{v.name}</div>
+                            <div className="voice-card-category">{v.category || "General"}</div>
+                            <div className="voice-card-tags">
+                              {v.labels?.language && <span className="voice-tag">{v.labels.language}</span>}
+                              {v.labels?.accent && <span className="voice-tag">{v.labels.accent}</span>}
+                              {v.labels?.gender && <span className="voice-tag">{v.labels.gender}</span>}
+                            </div>
                           </div>
-                          <button
-                            className="btn primary py-2 w-full text-2xs mt-auto relative z-10"
-                            onClick={() => handlePlayPreview(v.preview_url)}
-                            disabled={!v.preview_url}
-                          >
-                            {v.preview_url ? "Quick Preview" : "No Preview"}
-                          </button>
-                          <div className="absolute inset-0 bg-lime opacity-0 group-hover:opacity-[0.03] transition-opacity"></div>
                         </div>
                       ))
                     )}
