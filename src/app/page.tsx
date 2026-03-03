@@ -1629,7 +1629,6 @@ export default function Dashboard() {
               {audioSubTab === "history" && (
                 <>
                   <div className="pane-header">
-                    <label>TTS History</label>
                     {user ? (
                       <button className="btn text-2xs" onClick={fetchRealTimeHistory}>
                         <RefreshCw size={12} /> Refresh
@@ -1752,10 +1751,6 @@ export default function Dashboard() {
               {/* My Agents sub-tab */}
               {agentSubTab === "my-agents" && (
                 <>
-                  <div className="voice-section-header">
-                    <span>My Agents</span>
-                    <span className="voice-count">{userAgents.length}</span>
-                  </div>
                   {userAgents.length === 0 && !isFetchingBases ? (
                     <div className="placeholder-pane h-32 flex items-center justify-center text-muted">
                       No agents yet. Create one in the &ldquo;Create Agent&rdquo; tab or duplicate a template.
@@ -1781,6 +1776,16 @@ export default function Dashboard() {
                               {callStatus === "loading" && activeAgentId === a.id ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
                             </button>
                             <button
+                              className="agent-action-btn duplicate"
+                              onClick={() => {
+                                setNewAgentName(a.name || "Agent");
+                                setAgentSubTab("create");
+                              }}
+                              title="Edit / Duplicate"
+                            >
+                              <CopyIcon size={14} />
+                            </button>
+                            <button
                               className="agent-action-btn delete"
                               onClick={async () => {
                                 if (!confirm(`Delete agent "${a.name || a.id}"?`)) return;
@@ -1800,9 +1805,6 @@ export default function Dashboard() {
                   )}
                   {/* Active Call Status */}
                   <div className="mt-6">
-                    <div className="voice-section-header">
-                      <span>Active Call</span>
-                    </div>
                     <div className={`placeholder-pane h-20 text-2xs ${callStatus === "active" ? "border-lime" : ""}`}>
                       {callStatus === "active" ? (
                         <div className="flex flex-col items-center gap-2">
@@ -1820,12 +1822,8 @@ export default function Dashboard() {
               {/* Templates sub-tab */}
               {agentSubTab === "templates" && (
                 <>
-                  <div className="voice-section-header">
-                    <span>Agent Templates</span>
-                    <span className="voice-count">{templateAgents.length}</span>
-                  </div>
                   <p className="text-2xs text-muted mb-6">
-                    These are preconfigured agents ready to use. Duplicate a template to create your own customized version.
+                    Preconfigured agents ready to use. Duplicate a template to create your own customized version.
                   </p>
                   <div className="agent-grid">
                     {templateAgents.map((a) => (
@@ -2187,7 +2185,6 @@ export default function Dashboard() {
           {activeTab === "pane-call-logs" && (
             <div className="tab-pane active">
               <div className="pane-header">
-                <label>Call History</label>
                 <div className="flex flex-wrap items-center gap-4">
                   <select
                     value={callLogFilterType}
@@ -2266,8 +2263,8 @@ export default function Dashboard() {
                         const callType = c.type === "webCall" ? "web" : c.type === "outboundPhoneCall" ? "outbound" : "inbound";
                         const callLabel = c.type === "webCall" ? "Web" : c.type === "outboundPhoneCall" ? "Outbound" : c.type === "inboundPhoneCall" ? "Inbound" : c.type ?? "—";
                         return (
-                          <div key={c.id}>
-                            <div className="call-log-row" onClick={() => handleExpandCallLog(c.id)}>
+                          <div key={c.id} className={`call-log-row-wrapper${isExpanded ? " expanded" : ""}`}>
+                            <div className={`call-log-row${isPlaying ? " playing" : ""}`} onClick={() => handleExpandCallLog(c.id)}>
                               <span className="call-log-id" title={c.id}>
                                 {isExpanded ? <ChevronDown size={14} style={{ display: "inline", marginRight: 6 }} /> : <ChevronRight size={14} style={{ display: "inline", marginRight: 6 }} />}
                                 {from || to || c.id.slice(0, 12)}
@@ -2322,10 +2319,7 @@ export default function Dashboard() {
           {activeTab === "pane-integrations" && (
             <div className="tab-pane active">
               <div className="pane-header">
-                <div>
-                  <label>Integrations</label>
-                  <div className="text-2xs text-faint mt-1">Connect your Vapi agents to external tools and services</div>
-                </div>
+                <div className="text-2xs text-faint">Connect your Vapi agents to external tools and services</div>
               </div>
               <div className="integrations-grid">
                 {[
@@ -2380,9 +2374,6 @@ export default function Dashboard() {
 
           {activeTab === "pane-settings" && (
             <div className="tab-pane active">
-              <div className="pane-header">
-                <label>Settings</label>
-              </div>
               <div className="space-y-6">
               <div className="field">
                 <label>Default Echo Model</label>
