@@ -7,7 +7,6 @@ import {
   Mic,
   Copy,
   Users,
-  History,
   BookOpen,
   Settings as SettingsIcon,
   Sun,
@@ -27,6 +26,9 @@ import {
   Maximize2,
   Minimize2,
   Pause,
+  Plug2,
+  X,
+  FileUp,
 } from "lucide-react";
 
 import OrbitCore from "@vapi-ai/web";
@@ -360,7 +362,7 @@ export default function Dashboard() {
     { id: "pane-clone", label: "Voice Cloning", icon: <Copy size={18} />, desc: "Instantly clone voices with full metadata tagging" },
     { id: "pane-agents", label: "Conversational", icon: <Users size={18} />, desc: "Create and connect to AI agents" },
     { id: "pane-call-logs", label: "Call History", icon: <Phone size={18} />, desc: "Playback and transcripts for all calls" },
-    { id: "pane-history", label: "History", icon: <History size={18} />, desc: "View and play past synthesized audio" },
+    { id: "pane-integrations", label: "Integrations", icon: <Plug2 size={18} />, desc: "Connect SMS, Email, CRM and more" },
     { id: "pane-voices", label: "Voices", icon: <BookOpen size={18} />, desc: "Manage your voice library" },
     { id: "pane-docs", label: "Docs", icon: <FileText size={18} />, desc: "API documentation and test inbound" },
     { id: "pane-settings", label: "Settings", icon: <SettingsIcon size={18} />, desc: "Configure default Echo models and format" },
@@ -690,6 +692,7 @@ export default function Dashboard() {
   const [agentVoice, setAgentVoice] = useState("vapi:elliot");
   const [agentIntroSpiel, setAgentIntroSpiel] = useState(DEFAULT_AGENT_INTRO);
   const [agentSkillsPrompt, setAgentSkillsPrompt] = useState(DEFAULT_AGENT_SKILLS);
+  const [kbFiles, setKbFiles] = useState<File[]>([]);
   const [dialerNumber, setDialerNumber] = useState("");
   const [phonebookEntries, setPhonebookEntries] = useState<{ name: string; number: string }[]>([]);
   const [selectedDialerAgentId, setSelectedDialerAgentId] = useState("");
@@ -1104,7 +1107,7 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="app">
+    <div className={`app${isFullscreen ? " fullscreen-mode" : ""}`}>
       {/* SIDEBAR */}
       <aside className="card">
         <div className="cardBody sidebar-inner">
@@ -1590,7 +1593,7 @@ export default function Dashboard() {
                       </div>
                       <div className="dialer-actions">
                         <button
-                          className="btn primary dialer-call-btn"
+                          className="dialer-call-btn-round"
                           onClick={async () => {
                             const num = dialerNumber.replace(/\s/g, "").replace(/[^\d+]/g, "");
                             if (!num) return;
@@ -1618,8 +1621,7 @@ export default function Dashboard() {
                           }}
                           disabled={!dialerNumber.trim() || isDialerCalling}
                         >
-                          {isDialerCalling ? <Loader2 size={20} className="animate-spin" /> : <Phone size={20} />}
-                          {isDialerCalling ? "Calling…" : "Call"}
+                          {isDialerCalling ? <Loader2 size={24} className="animate-spin" /> : <Phone size={24} />}
                         </button>
                         {dialerCallStatus && (
                           <span className={`text-2xs block mt-1 ${dialerCallStatus.startsWith("Error") ? "text-bad" : "text-muted"}`}>
@@ -1753,6 +1755,45 @@ export default function Dashboard() {
                       onChange={(e) => setAgentSkillsPrompt(e.target.value)}
                       rows={4}
                     />
+                  </div>
+                  <div className="field">
+                    <label>Knowledge Base Documents</label>
+                    <label className="kb-upload-zone">
+                      <FileUp size={24} className="upload-icon" />
+                      <span className="upload-text">Drop files here or click to upload</span>
+                      <span className="upload-hint">PDF, TXT, DOCX — max 10 MB each</span>
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.txt,.docx,.doc,.md,.csv"
+                        hidden
+                        onChange={(e) => {
+                          if (e.target.files) {
+                            setKbFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                          }
+                          e.target.value = "";
+                        }}
+                      />
+                    </label>
+                    {kbFiles.length > 0 && (
+                      <div className="kb-file-list">
+                        {kbFiles.map((f, i) => (
+                          <div key={`${f.name}-${i}`} className="kb-file-item">
+                            <FileText size={14} />
+                            <span>{f.name}</span>
+                            <span className="file-size">{(f.size / 1024).toFixed(0)} KB</span>
+                            <button
+                              type="button"
+                              className="remove-file"
+                              onClick={() => setKbFiles((prev) => prev.filter((_, j) => j !== i))}
+                              title="Remove file"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                   <div className="flex gap-2 mt-2">
                     <button
@@ -1903,60 +1944,42 @@ export default function Dashboard() {
                     </div>
                   ) : (
                     <div className="call-logs-rows">
-                      <div className="call-log-row call-log-header">
-                        <span className="call-log-expand"></span>
-                        <span>Type</span>
-                        <span>From</span>
-                        <span>To</span>
-                        <span>Date</span>
-                        <span className="call-log-play">Play</span>
-                      </div>
                       {filtered.map((c) => {
                         const { from, to } = getCallFromTo(c);
                         const isExpanded = expandedCallLogId === c.id;
                         const isPlaying = playingCallLogId === c.id;
+                        const callType = c.type === "webCall" ? "web" : c.type === "outboundPhoneCall" ? "outbound" : "inbound";
+                        const callLabel = c.type === "webCall" ? "Web" : c.type === "outboundPhoneCall" ? "Outbound" : c.type === "inboundPhoneCall" ? "Inbound" : c.type ?? "—";
                         return (
-                          <div key={c.id} className={`call-log-row-wrapper ${isExpanded ? "expanded" : ""}`}>
-                            <div className={`call-log-row ${isPlaying ? "playing" : ""}`}>
-                              <span className="call-log-expand">
-                                <button
-                                  type="button"
-                                  className="action-btn p-1"
-                                  onClick={() => handleExpandCallLog(c.id)}
-                                  title={isExpanded ? "Hide transcript" : "Show transcript"}
-                                  aria-label={isExpanded ? "Collapse" : "Expand"}
-                                >
-                                  {isExpanded ? (
-                                    <ChevronDown size={16} />
-                                  ) : (
-                                    <ChevronRight size={16} />
-                                  )}
-                                </button>
+                          <div key={c.id}>
+                            <div className="call-log-row" onClick={() => handleExpandCallLog(c.id)}>
+                              <span className="call-log-id" title={c.id}>
+                                {isExpanded ? <ChevronDown size={14} style={{ display: "inline", marginRight: 6 }} /> : <ChevronRight size={14} style={{ display: "inline", marginRight: 6 }} />}
+                                {from || to || c.id.slice(0, 12)}
                               </span>
-                              <span className="call-log-type">
-                                <span className={`call-type-badge ${c.type === "webCall" ? "web" : c.type === "outboundPhoneCall" ? "outbound" : "inbound"}`}>
-                                  {c.type === "webCall" ? "Web" : c.type === "outboundPhoneCall" ? "Outbound" : c.type === "inboundPhoneCall" ? "Inbound" : c.type ?? "—"}
-                                </span>
-                              </span>
-                              <span className="call-log-number">{from}</span>
-                              <span className="call-log-number">{to}</span>
+                              <span className={`call-log-type ${callType}`}>{callLabel}</span>
                               <span className="call-log-date">
                                 {c.createdAt ? new Date(c.createdAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "—"}
                               </span>
-                              <span className="call-log-play">
+                              <span className="call-log-duration">
                                 <button
                                   type="button"
                                   className={`action-btn ${isPlaying ? "text-lime" : ""}`}
-                                  onClick={() => handlePlayCallLog(c.id)}
-                                  title={isPlaying ? "Stop playback" : "Play recording"}
-                                  aria-label={isPlaying ? "Stop" : "Play recording"}
+                                  onClick={(e) => { e.stopPropagation(); handlePlayCallLog(c.id); }}
+                                  title={isPlaying ? "Stop" : "Play"}
+                                  aria-label={isPlaying ? "Stop" : "Play"}
                                 >
-                                  {isPlaying ? <Pause size={16} /> : <Play size={16} fill={undefined} />}
+                                  {isPlaying ? <Pause size={16} /> : <Play size={16} />}
                                 </button>
                               </span>
                             </div>
                             {isExpanded && (
-                              <div className="call-log-transcript">
+                              <div className="call-log-expanded">
+                                <div className="flex items-center gap-3 text-2xs text-muted">
+                                  <span>From: <strong>{from || "—"}</strong></span>
+                                  <span>→</span>
+                                  <span>To: <strong>{to || "—"}</strong></span>
+                                </div>
                                 <div className="call-log-transcript-header">
                                   <FileText size={14} />
                                   <span>Transcript</span>
@@ -1968,7 +1991,7 @@ export default function Dashboard() {
                                   </div>
                                 ) : expandedCallTranscript ? (
                                   <pre className="call-log-transcript-text">{expandedCallTranscript}</pre>
-                                ) : null}
+                                ) : <span className="text-2xs text-faint">No transcript available</span>}
                               </div>
                             )}
                           </div>
@@ -1981,91 +2004,44 @@ export default function Dashboard() {
             </div>
           )}
 
-          {activeTab === "pane-history" && (
+          {activeTab === "pane-integrations" && (
             <div className="tab-pane active">
-              <div className="flex justify-between items-center mb-4">
-                <label className="block">TTS History</label>
-                {user ? (
-                  <button className="text-2xs text-lime bg-transparent hover:text-white" onClick={fetchRealTimeHistory}>Refresh</button>
-                ) : null}
-              </div>
-              {!user ? (
-                <div className="placeholder-pane h-32 flex items-center justify-center text-muted">
-                  Sign in to save and view your TTS history.
+              <div className="flex justify-between items-center mb-6">
+                <div>
+                  <label className="block">Integrations</label>
+                  <span className="text-2xs text-faint">Connect your Vapi agents to external tools and services</span>
                 </div>
-              ) : (
-                <>
-                  {historyAudioUrl && (
-                    <div className="mb-4 p-4 rounded-xl border border-border bg-panel flex items-center gap-4">
-                      <audio
-                        ref={historyAudioRef}
-                        src={historyAudioUrl}
-                        controls
-                        className="flex-1 h-10"
-                        onEnded={() => { setTtsStatus(""); setPlayingHistoryId(null); }}
-                      />
-                      <span className="text-2xs text-muted">Now playing</span>
+              </div>
+              <div className="integrations-grid">
+                {[
+                  { key: "sms", icon: "📱", cls: "sms", title: "SMS / Messaging", provider: "Twilio · Vonage", desc: "Send and receive SMS messages during or after calls. Trigger follow-up texts, confirmations, and alerts.", available: true },
+                  { key: "email", icon: "📧", cls: "email", title: "Email", provider: "SendGrid · Mailgun", desc: "Automate email follow-ups, send transcripts, receipts, and notifications after each conversation.", available: true },
+                  { key: "calendar", icon: "📅", cls: "calendar", title: "Calendar", provider: "Cal.com · Google Calendar", desc: "Let agents book, reschedule, and cancel appointments directly during a call.", available: true },
+                  { key: "crm", icon: "🗂", cls: "crm", title: "CRM", provider: "GoHighLevel · HubSpot", desc: "Sync call data, transcripts, and contact info with your CRM automatically.", available: true },
+                  { key: "slack", icon: "💬", cls: "slack", title: "Slack", provider: "Slack API", desc: "Get real-time call notifications, summaries, and alerts posted to Slack channels.", available: false },
+                  { key: "webhook", icon: "🔗", cls: "webhook", title: "Custom Webhooks", provider: "Zapier · Make · n8n", desc: "Trigger any workflow via webhooks. Connect to thousands of apps through automation platforms.", available: true },
+                ].map((intg) => (
+                  <div key={intg.key} className="integration-card">
+                    <div className="integration-card-header">
+                      <div className={`integration-icon ${intg.cls}`}>{intg.icon}</div>
+                      <div>
+                        <div className="integration-card-title">{intg.title}</div>
+                        <div className="integration-card-provider">{intg.provider}</div>
+                      </div>
                     </div>
-                  )}
-                  <div className="history-list">
-                    {isHistoryLoading ? (
-                      <div className="placeholder-pane h-32 flex items-center justify-center"><Loader2 className="animate-spin" size={24} /></div>
-                    ) : history.length === 0 ? (
-                      <div className="placeholder-pane h-32 flex items-center justify-center text-muted">No TTS history yet. Generate speech to see it here.</div>
-                    ) : (
-                      history.slice(0, 50).map((h) => (
-                        <div key={h.id} className="history-card">
-                          <button
-                            className={`history-play-btn ${playingHistoryId === h.id ? "playing" : ""}`}
-                            onClick={() => handlePlayHistory(h.id)}
-                            title="Play"
-                            aria-label="Play"
-                          >
-                            {playingHistoryId === h.id ? (
-                              <Volume2 size={26} className="text-inherit" />
-                            ) : (
-                              <Play size={26} fill="currentColor" className="text-lime" />
-                            )}
-                          </button>
-                          <div className="history-card-body">
-                            <div className="history-card-text" title={h.text}>{h.text}</div>
-                            <div className="history-card-meta">
-                              <span className="voice-pill">{h.voice_name}</span>
-                              <span className="history-card-date">{new Date(h.created_at).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
-                            </div>
-                          </div>
-                          <div className="history-card-actions">
-                            <button
-                              className="history-card-action"
-                              onClick={() => { setTtsText(h.text); setSelectedVoice(h.voice_id); setActiveTab("pane-tts"); }}
-                              title="Re-synthesize"
-                            >
-                              <AudioWaveform size={16} />
-                            </button>
-                            <div className="relative" ref={downloadMenuId === h.id ? downloadMenuRef : undefined}>
-                              <button
-                                className="history-card-action"
-                                onClick={(e) => { e.stopPropagation(); setDownloadMenuId(downloadMenuId === h.id ? null : h.id); }}
-                                title="Download"
-                              >
-                                <Download size={16} />
-                              </button>
-                              {downloadMenuId === h.id && (
-                                <div className="absolute right-0 top-full mt-1 z-20 rounded-lg border border-border bg-panel py-1 min-w-[90px] shadow-xl">
-                                  <button className="block w-full text-left px-4 py-2 text-sm hover:bg-limeDim"
-                                    onClick={() => { handleDownloadHistory(h.id, h.text, "mp3"); setDownloadMenuId(null); }}>MP3</button>
-                                  <button className="block w-full text-left px-4 py-2 text-sm hover:bg-limeDim"
-                                    onClick={() => { handleDownloadHistory(h.id, h.text, "wav"); setDownloadMenuId(null); }}>WAV</button>
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    )}
+                    <div className="integration-card-desc">{intg.desc}</div>
+                    <div className="integration-card-footer">
+                      <span className="integration-status">
+                        <span className={`dot ${intg.available ? "available" : "coming"}`}></span>
+                        <span className="text-faint">{intg.available ? "Ready to connect" : "Coming soon"}</span>
+                      </span>
+                      <button className="btn-connect" disabled={!intg.available}>
+                        {intg.available ? "Connect" : "Soon"}
+                      </button>
+                    </div>
                   </div>
-                </>
-              )}
+                ))}
+              </div>
             </div>
           )}
 
@@ -2155,7 +2131,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {!["pane-tts", "pane-stt", "pane-clone", "pane-agents", "pane-call-logs", "pane-history", "pane-voices", "pane-docs", "pane-settings"].includes(activeTab) && (
+          {!["pane-tts", "pane-stt", "pane-clone", "pane-agents", "pane-call-logs", "pane-integrations", "pane-voices", "pane-docs", "pane-settings"].includes(activeTab) && (
             <div className="tab-pane active placeholder-pane">
               Coming Soon: {activeItem?.label}
             </div>
