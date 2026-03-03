@@ -112,12 +112,21 @@ export async function createAssistantFromScratch(params: {
   systemPrompt: string;
   language?: string;
   voice?: { provider: 'vapi' | '11labs'; voiceId: string };
+  enableTools?: boolean;
 }) {
-  const { name, firstMessage, systemPrompt, language, voice } = params;
+  const { name, firstMessage, systemPrompt, language, voice, enableTools = true } = params;
   const voiceConfig = voice?.provider && voice?.voiceId
     ? { provider: voice.provider as 'vapi' | '11labs', voiceId: voice.voiceId }
     : { provider: '11labs' as const, voiceId: 'EXAVITQu4vr4xnSDxMaL' };
-  const payload = {
+
+  // Import agent tools dynamically to avoid circular deps
+  const { notificationTools, NOTIFICATION_TOOLS_PROMPT } = await import('@/lib/services/agent-tools');
+
+  const finalSystemPrompt = enableTools
+    ? (systemPrompt || 'You are a helpful AI assistant.') + NOTIFICATION_TOOLS_PROMPT
+    : (systemPrompt || 'You are a helpful AI assistant.');
+
+  const payload: Record<string, unknown> = {
     name,
     firstMessage: firstMessage || undefined,
     firstMessageMode: 'assistant-speaks-first' as const,
@@ -125,8 +134,9 @@ export async function createAssistantFromScratch(params: {
       provider: 'openai' as const,
       model: 'gpt-4o-mini',
       messages: [
-        { role: 'system' as const, content: systemPrompt || 'You are a helpful AI assistant.' },
+        { role: 'system' as const, content: finalSystemPrompt },
       ],
+      ...(enableTools ? { tools: notificationTools } : {}),
     },
     voice: voiceConfig,
     transcriber: {
@@ -134,6 +144,12 @@ export async function createAssistantFromScratch(params: {
       model: 'nova-2',
       language: toNova2Language(language),
     },
+    // VAPI server URL for tool execution
+    ...(enableTools ? {
+      serverUrl: process.env.NEXT_PUBLIC_APP_URL
+        ? `${process.env.NEXT_PUBLIC_APP_URL}/api/webhooks/vapi/tool-call`
+        : undefined,
+    } : {}),
   };
   return orbitCoreRequest('POST', '/assistant', payload);
 }

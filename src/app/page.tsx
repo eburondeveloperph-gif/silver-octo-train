@@ -70,6 +70,31 @@ const DEFAULT_AGENT_NAME = "Customer Support Bot";
 const DEFAULT_AGENT_INTRO = "Hi! I'm your assistant. How can I help you today?";
 const DEFAULT_AGENT_SKILLS = "You are a helpful customer support agent. You can answer questions about products, process orders, and handle returns. Be friendly and concise.";
 
+type AgentMessage = { role?: string; content?: string };
+type AgentBase = {
+  id: string;
+  name?: string;
+  designation?: string;
+  description?: string;
+  firstMessage?: string;
+  skills?: string | string[];
+  title?: string;
+  role?: string;
+  model?: { messages?: AgentMessage[] };
+  [key: string]: unknown;
+};
+
+const DEFAULT_TEMPLATE_AGENT: AgentBase = {
+  ...DEFAULT_SAMPLE_AGENT,
+  designation: "Customer Support Template",
+  description: "Ready-to-use voice agent for handling common support requests over phone or web calls.",
+  skills: [
+    "Answer product and pricing questions",
+    "Handle order, shipping, and return concerns",
+    "Escalate sensitive issues to a live support team",
+  ],
+};
+
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("pane-audio");
   const [audioSubTab, setAudioSubTab] = useState("tts");
@@ -367,7 +392,8 @@ export default function Dashboard() {
   };
 
   const navItems = [
-    { id: "pane-audio", label: "Audio", icon: <AudioWaveform size={18} />, desc: "TTS, STT, Voice Cloning & Library" },
+    { id: "pane-audio", label: "Audio", icon: <AudioWaveform size={18} />, desc: "TTS, STT, Voices & Library" },
+    { id: "pane-clone", label: "Clone", icon: <Copy size={18} />, desc: "Create custom cloned voices from samples" },
     { id: "pane-agents", label: "Agents", icon: <Users size={18} />, desc: "Create and connect to AI agents" },
     { id: "pane-call-logs", label: "Call History", icon: <Phone size={18} />, desc: "Playback and transcripts for all calls" },
     { id: "pane-integrations", label: "Integrations", icon: <Plug2 size={18} />, desc: "Connect SMS, Email, CRM and more" },
@@ -378,7 +404,6 @@ export default function Dashboard() {
   const audioSubTabs = [
     { id: "tts", label: "Text to Speech", icon: <AudioWaveform size={15} /> },
     { id: "stt", label: "Speech to Text", icon: <Mic size={15} /> },
-    { id: "clone", label: "Voice Cloning", icon: <Copy size={15} /> },
     { id: "voices", label: "Voices", icon: <BookOpen size={15} /> },
     { id: "history", label: "History", icon: <History size={15} /> },
   ];
@@ -700,7 +725,8 @@ export default function Dashboard() {
     }
   };
 
-  const [agentBases, setAgentBases] = useState<{ id: string; name?: string }[]>([]);
+  const [agentBases, setAgentBases] = useState<AgentBase[]>([]);
+  const [expandedAgentCards, setExpandedAgentCards] = useState<Record<string, boolean>>({});
   const [agentBasesError, setAgentBasesError] = useState<string | null>(null);
   const [isFetchingBases, setIsFetchingBases] = useState(false);
   const [userAssistantId, setUserAssistantId] = useState<string | null>(null);
@@ -917,7 +943,7 @@ export default function Dashboard() {
   // Always include default sample agent first, then fetched agents (no duplicate id)
   const displayAgents = useMemo(() => {
     const seen = new Set<string>();
-    const out: { id: string; name?: string }[] = [{ ...DEFAULT_SAMPLE_AGENT }];
+    const out: AgentBase[] = [{ ...DEFAULT_SAMPLE_AGENT }];
     seen.add(DEFAULT_SAMPLE_AGENT.id);
     agentBases.forEach((a) => {
       if (!seen.has(a.id)) {
@@ -934,9 +960,56 @@ export default function Dashboard() {
   }, [agentBases]);
 
   // Template agents that users can duplicate
-  const templateAgents: { id: string; name?: string }[] = [
-    { ...DEFAULT_SAMPLE_AGENT },
+  const templateAgents: AgentBase[] = [
+    { ...DEFAULT_TEMPLATE_AGENT },
   ];
+
+  const toggleAgentCard = useCallback((cardId: string) => {
+    setExpandedAgentCards((prev) => ({
+      ...prev,
+      [cardId]: !prev[cardId],
+    }));
+  }, []);
+
+  const getAgentSystemPrompt = useCallback((agent: AgentBase) => {
+    const messages = agent.model?.messages;
+    if (!Array.isArray(messages)) return "";
+    const systemMsg = messages.find((msg) => msg?.role === "system" && typeof msg?.content === "string");
+    return typeof systemMsg?.content === "string" ? systemMsg.content.trim() : "";
+  }, []);
+
+  const getAgentDesignation = useCallback((agent: AgentBase, isTemplate: boolean) => {
+    const values = [agent.designation, agent.title, agent.role]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .map((value) => value.trim());
+    if (values.length > 0) return values[0];
+    return isTemplate ? "Template Agent" : "Custom Agent";
+  }, []);
+
+  const getAgentDescription = useCallback((agent: AgentBase, isTemplate: boolean) => {
+    const values = [agent.description, agent.firstMessage]
+      .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+      .map((value) => value.trim());
+    if (values.length > 0) return values[0];
+    return isTemplate
+      ? "Preconfigured voice agent that can be duplicated and customized."
+      : "No description available yet.";
+  }, []);
+
+  const getAgentSkills = useCallback((agent: AgentBase) => {
+    if (Array.isArray(agent.skills)) {
+      const cleaned = agent.skills
+        .filter((value): value is string => typeof value === "string" && value.trim().length > 0)
+        .map((value) => value.trim());
+      if (cleaned.length > 0) return cleaned.join("\n");
+    }
+    if (typeof agent.skills === "string" && agent.skills.trim()) {
+      return agent.skills.trim();
+    }
+    const prompt = getAgentSystemPrompt(agent);
+    if (prompt) return prompt;
+    return "No skills configured yet.";
+  }, [getAgentSystemPrompt]);
 
   const [showUserProfile, setShowUserProfile] = useState(false);
 
@@ -1410,154 +1483,6 @@ export default function Dashboard() {
                 </>
               )}
 
-              {/* Voice Cloning Sub-tab */}
-              {audioSubTab === "clone" && (
-                <>
-                <div className="field">
-                <label htmlFor="cloneName">Voice Name</label>
-                <input
-                  type="text"
-                  id="cloneName"
-                  placeholder="e.g. My Custom Voice"
-                  value={cloneName}
-                  onChange={(e) => setCloneName(e.target.value)}
-                />
-              </div>
-              <div className="field">
-                <label htmlFor="cloneDesc">Description</label>
-                <textarea
-                  id="cloneDesc"
-                  placeholder="Describe the voice..."
-                  value={cloneDesc}
-                  onChange={(e) => setCloneDesc(e.target.value)}
-                  className="h-20"
-                ></textarea>
-              </div>
-              <div className="grid-2">
-                <div className="field">
-                  <label htmlFor="cloneLanguage">Language & Model</label>
-                  <select
-                    id="cloneLanguage"
-                    className="input-field"
-                    value={cloneLanguage}
-                    onChange={(e) => {
-                      setCloneLanguage(e.target.value);
-                      setCloneLocation("General");
-                    }}
-                  >
-                    <option value="Filipino">Filipino</option>
-                    <option value="English">English</option>
-                    <option value="Spanish">Spanish</option>
-                    <option value="French">French</option>
-                    <option value="German">German</option>
-                    <option value="Hindi">Hindi</option>
-                    <option value="Japanese">Japanese</option>
-                    <option value="en">Auto Detect</option>
-                    {models.find(m => m.model_id === "eleven_multilingual_v2")?.languages.map(lang => (
-                      <option key={lang.language_id} value={lang.language_id}>
-                        {lang.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="cloneLocation">Regional Dialect / Accent</label>
-                  <select
-                    id="cloneLocation"
-                    title="Select Accent or Dialect"
-                    className="input-field"
-                    value={cloneLocation}
-                    onChange={(e) => setCloneLocation(e.target.value)}
-                    disabled={!cloneLanguage}
-                  >
-                    <option value="">Auto-detect</option>
-                    {cloneLanguage && languageDialectMap[cloneLanguage]?.map(dialect => (
-                      <option key={dialect} value={dialect}>{dialect}</option>
-                    ))}
-                    {/* Fallback options if cloneLanguage is not set or not found in map */}
-                    {!cloneLanguage || !languageDialectMap[cloneLanguage] && (
-                      <>
-                        <option value="General">General / Standard</option>
-                        <option value="USA">USA / North America</option>
-                        <option value="UK">UK / British</option>
-                        <option value="Australia">Australian</option>
-                      </>
-                    )}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid-2">
-                <div className="field">
-                  <label htmlFor="cloneGender">Gender</label>
-                  <select 
-                    id="cloneGender" 
-                    value={cloneGender}
-                    onChange={(e) => setCloneGender(e.target.value)}
-                  >
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="Non-binary">Non-binary</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label htmlFor="cloneAge">Age Group</label>
-                  <select 
-                    id="cloneAge" 
-                    value={cloneAge}
-                    onChange={(e) => setCloneAge(e.target.value)}
-                  >
-                    <option value="Young">Young</option>
-                    <option value="Middle-aged">Middle-aged</option>
-                    <option value="Old">Old</option>
-                  </select>
-                </div>
-              </div>
-              <div className="field">
-                <label htmlFor="cloneFiles">Sample Files (Multiple allowed)</label>
-                <div className="upload-zone" onClick={() => document.getElementById("cloneFiles")?.click()}>
-                  <Volume2 size={24} className="mb-2 mx-auto" />
-                  <div>{cloneFiles.length > 0 ? `${cloneFiles.length} files selected` : "Drop samples here or click to browse"}</div>
-                  <input 
-                    type="file" 
-                    id="cloneFiles" 
-                    multiple 
-                    accept="audio/*" 
-                    onChange={(e) => setCloneFiles(Array.from(e.target.files || []))}
-                  />
-                </div>
-              </div>
-              <div className="field">
-                <div className="flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-xl mb-4">
-                  <input 
-                    type="checkbox" 
-                    id="cloneConsent" 
-                    className="mt-1"
-                    checked={cloneConsent}
-                    onChange={(e) => setCloneConsent(e.target.checked)}
-                  />
-                  <label htmlFor="cloneConsent" className="text-2xs text-faint leading-relaxed cursor-pointer select-none">
-                    I hereby confirm that I have all necessary rights or consents to upload and clone these voice samples and that I will not use the platform-generated content for any illegal, fraudulent, or harmful purpose. I reaffirm my obligation to abide by Eburon AI Terms of Service and Privacy Policy.
-                  </label>
-                </div>
-              </div>
-
-              <div className="flex gap-2.5 items-center">
-                <button 
-                  className="btn primary" 
-                  onClick={handleClone}
-                  disabled={isCloning || !cloneName || cloneFiles.length === 0 || !cloneConsent}
-                >
-                  {isCloning ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />} 
-                  Clone Voice
-                </button>
-                <span className={`text-xs ${cloneStatus.startsWith("Error") ? "text-bad" : "text-muted"}`}>
-                  {cloneStatus}
-                </span>
-              </div>
-              </>
-              )}
-
               {/* Voices Sub-tab */}
               {audioSubTab === "voices" && (
                 <>
@@ -1590,11 +1515,14 @@ export default function Dashboard() {
                   </div>
 
                   {/* Voice grid */}
-                  <div className="voice-section-header">
-                    <span>All voices</span>
+                  <div className="voice-section-header unified-list-header">
+                    <div className="unified-list-title">
+                      <BookOpen size={14} />
+                      <span>Voice Library</span>
+                    </div>
                     <span className="voice-count">{filteredVoices.length}</span>
                   </div>
-                  <div className="voice-grid">
+                  <div className="voice-grid unified-list-grid">
                     {filteredVoices.length === 0 ? (
                       <div className="placeholder-pane h-32 col-span-3 flex items-center justify-center text-muted">
                         {voices.length === 0 ? "Loading voices…" : "No voices match your search"}
@@ -1603,10 +1531,10 @@ export default function Dashboard() {
                       filteredVoices.map((v) => (
                         <div
                           key={v.voice_id}
-                          className="voice-card"
+                          className="voice-card unified-list-card unified-list-card-clickable"
                           onClick={() => handlePlayPreview(v.preview_url)}
                         >
-                          <div className="voice-card-avatar">
+                          <div className="voice-card-avatar unified-list-icon">
                             <Volume2 size={18} />
                           </div>
                           <div className="voice-card-info">
@@ -1617,6 +1545,9 @@ export default function Dashboard() {
                               {v.labels?.accent && <span className="voice-tag">{v.labels.accent}</span>}
                               {v.labels?.gender && <span className="voice-tag">{v.labels.gender}</span>}
                             </div>
+                          </div>
+                          <div className="voice-card-action-icon">
+                            <Play size={14} fill="currentColor" />
                           </div>
                         </div>
                       ))
@@ -1717,6 +1648,158 @@ export default function Dashboard() {
             </div>
           )}
 
+          {activeTab === "pane-clone" && (
+            <div className="tab-pane active">
+              <div className="pane-header">
+                <div className="flex items-center gap-2">
+                  <Copy size={15} className="text-lime" />
+                  <span className="text-2xs text-faint uppercase tracking-wider">Voice Clone Studio</span>
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="cloneName">Voice Name</label>
+                <input
+                  type="text"
+                  id="cloneName"
+                  placeholder="e.g. My Custom Voice"
+                  value={cloneName}
+                  onChange={(e) => setCloneName(e.target.value)}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="cloneDesc">Description</label>
+                <textarea
+                  id="cloneDesc"
+                  placeholder="Describe the voice..."
+                  value={cloneDesc}
+                  onChange={(e) => setCloneDesc(e.target.value)}
+                  className="h-20"
+                ></textarea>
+              </div>
+              <div className="grid-2">
+                <div className="field">
+                  <label htmlFor="cloneLanguage">Language & Model</label>
+                  <select
+                    id="cloneLanguage"
+                    className="input-field"
+                    value={cloneLanguage}
+                    onChange={(e) => {
+                      setCloneLanguage(e.target.value);
+                      setCloneLocation("General");
+                    }}
+                  >
+                    <option value="Filipino">Filipino</option>
+                    <option value="English">English</option>
+                    <option value="Spanish">Spanish</option>
+                    <option value="French">French</option>
+                    <option value="German">German</option>
+                    <option value="Hindi">Hindi</option>
+                    <option value="Japanese">Japanese</option>
+                    <option value="en">Auto Detect</option>
+                    {models.find(m => m.model_id === "eleven_multilingual_v2")?.languages.map(lang => (
+                      <option key={lang.language_id} value={lang.language_id}>
+                        {lang.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="cloneLocation">Regional Dialect / Accent</label>
+                  <select
+                    id="cloneLocation"
+                    title="Select Accent or Dialect"
+                    className="input-field"
+                    value={cloneLocation}
+                    onChange={(e) => setCloneLocation(e.target.value)}
+                    disabled={!cloneLanguage}
+                  >
+                    <option value="">Auto-detect</option>
+                    {cloneLanguage && languageDialectMap[cloneLanguage]?.map(dialect => (
+                      <option key={dialect} value={dialect}>{dialect}</option>
+                    ))}
+                    {!cloneLanguage || !languageDialectMap[cloneLanguage] && (
+                      <>
+                        <option value="General">General / Standard</option>
+                        <option value="USA">USA / North America</option>
+                        <option value="UK">UK / British</option>
+                        <option value="Australia">Australian</option>
+                      </>
+                    )}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid-2">
+                <div className="field">
+                  <label htmlFor="cloneGender">Gender</label>
+                  <select
+                    id="cloneGender"
+                    value={cloneGender}
+                    onChange={(e) => setCloneGender(e.target.value)}
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Non-binary">Non-binary</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label htmlFor="cloneAge">Age Group</label>
+                  <select
+                    id="cloneAge"
+                    value={cloneAge}
+                    onChange={(e) => setCloneAge(e.target.value)}
+                  >
+                    <option value="Young">Young</option>
+                    <option value="Middle-aged">Middle-aged</option>
+                    <option value="Old">Old</option>
+                  </select>
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="cloneFiles">Sample Files (Multiple allowed)</label>
+                <div className="upload-zone" onClick={() => document.getElementById("cloneFiles")?.click()}>
+                  <Volume2 size={24} className="mb-2 mx-auto" />
+                  <div>{cloneFiles.length > 0 ? `${cloneFiles.length} files selected` : "Drop samples here or click to browse"}</div>
+                  <input
+                    type="file"
+                    id="cloneFiles"
+                    multiple
+                    accept="audio/*"
+                    onChange={(e) => setCloneFiles(Array.from(e.target.files || []))}
+                  />
+                </div>
+              </div>
+              <div className="field">
+                <div className="flex items-start gap-3 p-4 bg-white/5 border border-white/10 rounded-xl mb-4">
+                  <input
+                    type="checkbox"
+                    id="cloneConsent"
+                    className="mt-1"
+                    checked={cloneConsent}
+                    onChange={(e) => setCloneConsent(e.target.checked)}
+                  />
+                  <label htmlFor="cloneConsent" className="text-2xs text-faint leading-relaxed cursor-pointer select-none">
+                    I hereby confirm that I have all necessary rights or consents to upload and clone these voice samples and that I will not use the platform-generated content for any illegal, fraudulent, or harmful purpose. I reaffirm my obligation to abide by Eburon AI Terms of Service and Privacy Policy.
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 items-center">
+                <button
+                  className="btn primary"
+                  onClick={handleClone}
+                  disabled={isCloning || !cloneName || cloneFiles.length === 0 || !cloneConsent}
+                >
+                  {isCloning ? <Loader2 size={16} className="animate-spin" /> : <Copy size={16} />}
+                  Clone Voice
+                </button>
+                <span className={`text-xs ${cloneStatus.startsWith("Error") ? "text-bad" : "text-muted"}`}>
+                  {cloneStatus}
+                </span>
+              </div>
+            </div>
+          )}
+
           {activeTab === "pane-agents" && (
             <div className="tab-pane active">
               {/* Agent sub-tabs */}
@@ -1732,11 +1815,10 @@ export default function Dashboard() {
                 ))}
                 <button
                   type="button"
-                  className="sub-tab"
+                  className="sub-tab sub-tab--icon"
                   onClick={fetchAgentBases}
                   disabled={isFetchingBases}
                   title="Refresh agents"
-                  style={{ flex: "0 0 auto", padding: "8px 12px" }}
                 >
                   {isFetchingBases ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
                 </button>
@@ -1751,56 +1833,155 @@ export default function Dashboard() {
               {/* My Agents sub-tab */}
               {agentSubTab === "my-agents" && (
                 <>
+                  <p className="text-2xs text-muted mb-6">
+                    Preconfigured agent ready to use. Duplicate this to create your own customized version.
+                  </p>
+                  <div className="agent-grid unified-list-grid">
+                    {templateAgents.map((a) => {
+                      const cardId = `my-agents-${a.id}`;
+                      const isExpanded = !!expandedAgentCards[cardId];
+                      return (
+                        <div key={a.id} className={`agent-card unified-list-card agent-collapsible-card${isExpanded ? " expanded" : ""}`}>
+                          <span className="template-badge">Template</span>
+                          <div className="agent-card-main">
+                            <button
+                              type="button"
+                              className="agent-collapse-toggle"
+                              onClick={() => toggleAgentCard(cardId)}
+                              aria-expanded={isExpanded}
+                              title={isExpanded ? "Collapse details" : "Expand details"}
+                            >
+                              {isExpanded ? <ChevronDown size={14} className="chevron-toggle" /> : <ChevronRight size={14} className="chevron-toggle" />}
+                            </button>
+                            <div className="agent-card-avatar unified-list-icon">
+                              <Users size={20} />
+                            </div>
+                            <div className="agent-card-info">
+                              <div className="agent-card-name">{a.name || "Unnamed Agent"}</div>
+                              <div className="agent-card-designation">{getAgentDesignation(a, true)}</div>
+                              <div className="agent-card-id">{a.id}</div>
+                            </div>
+                            <div className="agent-card-actions">
+                              <button
+                                className="agent-action-btn call"
+                                onClick={() => handleToggleCall(a.id)}
+                                disabled={callStatus === "loading" || (callStatus === "active" && activeAgentId !== a.id)}
+                                title="Test call"
+                              >
+                                {callStatus === "loading" && activeAgentId === a.id ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
+                              </button>
+                              <button
+                                className="agent-action-btn duplicate"
+                                onClick={() => {
+                                  setNewAgentName((a.name || "Agent") + " (Copy)");
+                                  setAgentSubTab("create");
+                                }}
+                                title="Duplicate as new agent"
+                              >
+                                <CopyIcon size={14} />
+                              </button>
+                            </div>
+                          </div>
+                          {isExpanded && (
+                            <div className="agent-card-details">
+                              <div className="agent-card-detail-item">
+                                <div className="agent-card-detail-label">Description</div>
+                                <p className="agent-card-detail-text">{getAgentDescription(a, true)}</p>
+                              </div>
+                              <div className="agent-card-detail-item">
+                                <div className="agent-card-detail-label">Skills</div>
+                                <p className="agent-card-detail-text">{getAgentSkills(a)}</p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
+              {/* Templates sub-tab */}
+              {agentSubTab === "templates" && (
+                <>
                   {userAgents.length === 0 && !isFetchingBases ? (
                     <div className="placeholder-pane h-32 flex items-center justify-center text-muted">
                       No agents yet. Create one in the &ldquo;Create Agent&rdquo; tab or duplicate a template.
                     </div>
                   ) : (
-                    <div className="agent-grid">
-                      {userAgents.map((a) => (
-                        <div key={a.id} className="agent-card">
-                          <div className="agent-card-avatar">
-                            <Users size={20} />
+                    <div className="agent-grid unified-list-grid">
+                      {userAgents.map((a) => {
+                        const cardId = `templates-${a.id}`;
+                        const isExpanded = !!expandedAgentCards[cardId];
+                        return (
+                          <div key={a.id} className={`agent-card unified-list-card agent-collapsible-card${isExpanded ? " expanded" : ""}`}>
+                            <div className="agent-card-main">
+                              <button
+                                type="button"
+                                className="agent-collapse-toggle"
+                                onClick={() => toggleAgentCard(cardId)}
+                                aria-expanded={isExpanded}
+                                title={isExpanded ? "Collapse details" : "Expand details"}
+                              >
+                                {isExpanded ? <ChevronDown size={14} className="chevron-toggle" /> : <ChevronRight size={14} className="chevron-toggle" />}
+                              </button>
+                              <div className="agent-card-avatar unified-list-icon">
+                                <Users size={20} />
+                              </div>
+                              <div className="agent-card-info">
+                                <div className="agent-card-name">{a.name || "Unnamed Agent"}</div>
+                                <div className="agent-card-designation">{getAgentDesignation(a, false)}</div>
+                                <div className="agent-card-id">{a.id}</div>
+                              </div>
+                              <div className="agent-card-actions">
+                                <button
+                                  className="agent-action-btn call"
+                                  onClick={() => handleToggleCall(a.id)}
+                                  disabled={callStatus === "loading" || (callStatus === "active" && activeAgentId !== a.id)}
+                                  title="Test call"
+                                >
+                                  {callStatus === "loading" && activeAgentId === a.id ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
+                                </button>
+                                <button
+                                  className="agent-action-btn duplicate"
+                                  onClick={() => {
+                                    setNewAgentName(a.name || "Agent");
+                                    setAgentSubTab("create");
+                                  }}
+                                  title="Edit / Duplicate"
+                                >
+                                  <CopyIcon size={14} />
+                                </button>
+                                <button
+                                  className="agent-action-btn delete"
+                                  onClick={async () => {
+                                    if (!confirm(`Delete agent "${a.name || a.id}"?`)) return;
+                                    try {
+                                      await fetch(`/api/orbit/assistants/${a.id}`, { method: "DELETE" });
+                                      fetchAgentBases();
+                                    } catch { /* ignore */ }
+                                  }}
+                                  title="Delete agent"
+                                >
+                                  <Trash2 size={14} />
+                                </button>
+                              </div>
+                            </div>
+                            {isExpanded && (
+                              <div className="agent-card-details">
+                                <div className="agent-card-detail-item">
+                                  <div className="agent-card-detail-label">Description</div>
+                                  <p className="agent-card-detail-text">{getAgentDescription(a, false)}</p>
+                                </div>
+                                <div className="agent-card-detail-item">
+                                  <div className="agent-card-detail-label">Skills</div>
+                                  <p className="agent-card-detail-text">{getAgentSkills(a)}</p>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <div className="agent-card-info">
-                            <div className="agent-card-name">{a.name || "Unnamed Agent"}</div>
-                            <div className="agent-card-id">{a.id}</div>
-                          </div>
-                          <div className="agent-card-actions">
-                            <button
-                              className="agent-action-btn call"
-                              onClick={() => handleToggleCall(a.id)}
-                              disabled={callStatus === "loading" || (callStatus === "active" && activeAgentId !== a.id)}
-                              title="Test call"
-                            >
-                              {callStatus === "loading" && activeAgentId === a.id ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
-                            </button>
-                            <button
-                              className="agent-action-btn duplicate"
-                              onClick={() => {
-                                setNewAgentName(a.name || "Agent");
-                                setAgentSubTab("create");
-                              }}
-                              title="Edit / Duplicate"
-                            >
-                              <CopyIcon size={14} />
-                            </button>
-                            <button
-                              className="agent-action-btn delete"
-                              onClick={async () => {
-                                if (!confirm(`Delete agent "${a.name || a.id}"?`)) return;
-                                try {
-                                  await fetch(`/api/orbit/assistants/${a.id}`, { method: "DELETE" });
-                                  fetchAgentBases();
-                                } catch { /* ignore */ }
-                              }}
-                              title="Delete agent"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   )}
                   {/* Active Call Status */}
@@ -1815,49 +1996,6 @@ export default function Dashboard() {
                         "No active call. Use Test Call on an agent or create one."
                       )}
                     </div>
-                  </div>
-                </>
-              )}
-
-              {/* Templates sub-tab */}
-              {agentSubTab === "templates" && (
-                <>
-                  <p className="text-2xs text-muted mb-6">
-                    Preconfigured agents ready to use. Duplicate a template to create your own customized version.
-                  </p>
-                  <div className="agent-grid">
-                    {templateAgents.map((a) => (
-                      <div key={a.id} className="agent-card">
-                        <span className="template-badge">Template</span>
-                        <div className="agent-card-avatar">
-                          <Users size={20} />
-                        </div>
-                        <div className="agent-card-info">
-                          <div className="agent-card-name">{a.name || "Unnamed Agent"}</div>
-                          <div className="agent-card-id">{a.id}</div>
-                        </div>
-                        <div className="agent-card-actions">
-                          <button
-                            className="agent-action-btn call"
-                            onClick={() => handleToggleCall(a.id)}
-                            disabled={callStatus === "loading" || (callStatus === "active" && activeAgentId !== a.id)}
-                            title="Test call"
-                          >
-                            {callStatus === "loading" && activeAgentId === a.id ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
-                          </button>
-                          <button
-                            className="agent-action-btn duplicate"
-                            onClick={() => {
-                              setNewAgentName((a.name || "Agent") + " (Copy)");
-                              setAgentSubTab("create");
-                            }}
-                            title="Duplicate as new agent"
-                          >
-                            <CopyIcon size={14} />
-                          </button>
-                        </div>
-                      </div>
-                    ))}
                   </div>
                 </>
               )}
@@ -1894,8 +2032,19 @@ export default function Dashboard() {
                       <div className="iphone-frame">
                         <div className="iphone-notch"></div>
                         <div className="iphone-screen">
+                          <div className="dialer-status-row">
+                            <span>9:41</span>
+                            <span>Secure LTE</span>
+                            <span>97%</span>
+                          </div>
                           <div className="dialer-header">
-                            <span className="dialer-time">Dialer</span>
+                            <div className="dialer-header-copy">
+                              <span className="dialer-header-tag">Create Agent</span>
+                              <span className="dialer-time">Smart Dialer</span>
+                            </div>
+                            <span className="dialer-agent-chip">
+                              {displayAgents.find((a) => a.id === selectedDialerAgentId)?.name || "No agent"}
+                            </span>
                           </div>
                           <div className="dialer-agent-select">
                             <label className="text-2xs text-faint">Agent for calls</label>
@@ -2002,7 +2151,7 @@ export default function Dashboard() {
                             <div className="phonebook-list">
                               <div className="phonebook-header text-2xs text-faint">{phonebookEntries.length} contacts</div>
                               <div className="phonebook-scroll">
-                                {phonebookEntries.slice(0, 8).map((p, i) => (
+                                {phonebookEntries.slice(0, 6).map((p, i) => (
                                   <div
                                     key={i}
                                     className="phonebook-row"
@@ -2015,6 +2164,55 @@ export default function Dashboard() {
                               </div>
                             </div>
                           )}
+                          <div className="dialer-call-logs-card">
+                            <div className="dialer-call-logs-head">
+                              <div className="dialer-call-logs-head-copy">
+                                <span className="dialer-call-logs-title">Recent Call Logs</span>
+                                <span className="dialer-call-logs-sub">
+                                  {isCallLogsLoading ? "Syncing..." : `${Math.min(callLogs.length, 6)} of ${callLogs.length} calls`}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                className="dialer-refresh-btn"
+                                onClick={fetchCallLogs}
+                                title="Refresh call logs"
+                                disabled={isCallLogsLoading}
+                              >
+                                {isCallLogsLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                              </button>
+                            </div>
+                            {callLogs.length === 0 && !isCallLogsLoading ? (
+                              <div className="dialer-call-logs-empty">No calls yet. Start a dial and logs will appear here.</div>
+                            ) : (
+                              <div className="dialer-call-logs-scroll">
+                                {callLogs.slice(0, 6).map((c) => {
+                                  const { from, to } = getCallFromTo(c);
+                                  const callType = c.type === "webCall" ? "web" : c.type === "outboundPhoneCall" ? "outbound" : "inbound";
+                                  const callLabel = c.type === "webCall" ? "Web" : c.type === "outboundPhoneCall" ? "Outbound" : "Inbound";
+                                  const customerNumber = (c.customer?.number || "").replace(/[^\d+]/g, "").slice(0, 15);
+                                  const when = c.createdAt
+                                    ? new Date(c.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                                    : "—";
+                                  return (
+                                    <button
+                                      key={c.id}
+                                      type="button"
+                                      className="dialer-call-log-row"
+                                      onClick={() => {
+                                        if (customerNumber) setDialerNumber(customerNumber);
+                                      }}
+                                      title={customerNumber ? `Tap to dial ${customerNumber}` : "No number in this call log"}
+                                    >
+                                      <span className={`dialer-log-badge ${callType}`}>{callLabel}</span>
+                                      <span className="dialer-log-route">{from} → {to}</span>
+                                      <span className="dialer-log-meta">{when}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -2266,7 +2464,7 @@ export default function Dashboard() {
                           <div key={c.id} className={`call-log-row-wrapper${isExpanded ? " expanded" : ""}`}>
                             <div className={`call-log-row${isPlaying ? " playing" : ""}`} onClick={() => handleExpandCallLog(c.id)}>
                               <span className="call-log-id" title={c.id}>
-                                {isExpanded ? <ChevronDown size={14} style={{ display: "inline", marginRight: 6 }} /> : <ChevronRight size={14} style={{ display: "inline", marginRight: 6 }} />}
+                                {isExpanded ? <ChevronDown size={14} className="chevron-toggle" /> : <ChevronRight size={14} className="chevron-toggle" />}
                                 {from || to || c.id.slice(0, 12)}
                               </span>
                               <span className={`call-log-type ${callType}`}>{callLabel}</span>
@@ -2406,7 +2604,7 @@ export default function Dashboard() {
             </div>
           )}
 
-          {!["pane-audio", "pane-agents", "pane-call-logs", "pane-integrations", "pane-docs", "pane-settings"].includes(activeTab) && (
+          {!["pane-audio", "pane-clone", "pane-agents", "pane-call-logs", "pane-integrations", "pane-docs", "pane-settings"].includes(activeTab) && (
             <div className="tab-pane active placeholder-pane">
               Coming Soon: {activeItem?.label}
             </div>

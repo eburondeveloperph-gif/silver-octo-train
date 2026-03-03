@@ -452,6 +452,14 @@ main.card {
   color: currentColor;
   flex-shrink: 0;
 }
+.sub-tab--icon {
+  flex: 0 0 auto;
+  padding: 8px 12px;
+}
+.chevron-toggle {
+  display: inline;
+  margin-right: 6px;
+}
 @media (max-width: 768px) {
   .sub-tab {
     padding: 7px 12px;
@@ -3170,5 +3178,550 @@ audio::-webkit-media-controls-time-remaining-display {
   }
   .agent-grid {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Premium Create Agent Phone + Call Logs */
+.agents-layout {
+  align-items: stretch;
+  gap: 36px;
+}
+
+.iphone-mockup {
+  position: relative;
+}
+
+.iphone-frame {
+  width: 300px;
+  height: 812px;
+  padding: 12px;
+  border-radius: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background:
+    radial-gradient(120px 240px at 90% 0%, rgba(56, 189, 248, 0.2), transparent 80%),
+    radial-gradient(180px 240px at 0% 100%, rgba(163, 230, 53, 0.16), transparent 80%),
+    linear-gradient(165deg, #12151a 0%, #080a0e 68%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 24px 48px rgba(0, 0, 0, 0.5);
+}
+
+.iphone-notch {
+  width: 120px;
+  height: 28px;
+  border-radius: 0 0 18px 18px;
+  margin: 0 auto 10px;
+  background: linear-gradient(180deg, rgba(0, 0, 0, 0.96), rgba(12, 12, 12, 0.92));
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.iphone-screen {
+  height: calc(100% - 50px);
+  border-radius: 30px;
+  padding: 14px;
+  gap: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)),
+    radial-gradient(220px 220px at 15% -10%, rgba(56, 189, 248, 0.12), transparent 75%),
+    radial-gradient(240px 220px at 110% 120%, rgba(163, 230, 53, 0.1), transparent 78%),
+    var(--bg);
+}
+
+.dialer-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--faint);
+  padding: 0 2px;
+}
+
+.dialer-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(163, 230, 53, 0.08), rgba(56, 189, 248, 0.03));
+}
+
+.dialer-header-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dialer-header-tag {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--faint);
+  font-weight: 600;
+}
+
+.dialer-time {
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+}
+
+.dialer-agent-chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 112px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 10px;
+  font-weight: 600;
+  color: #8be9ff;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.dialer-select {
+  font-size: 12px;
+  border-radius: 11px;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.dialer-number-input {
+  font-size: 22px;
+  letter-spacing: 0.12em;
+  font-variant-numeric: tabular-nums;
+  border-radius: 13px;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.dialer-backspace {
+  color: rgba(255, 255, 255, 0.62);
+}
+
+.dialer-pad {
+  gap: 8px;
+}
+
+.dialer-key {
+  min-height: 54px;
+  height: 54px;
+  aspect-ratio: auto;
+  border-radius: 16px;
+  font-size: 22px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.03));
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.dialer-actions {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  align-items: center;
+  gap: 10px;
+}
+
+.dialer-actions > .dialer-call-btn-round {
+  margin: 0;
+}
+
+.dialer-actions > span {
+  grid-column: 1 / -1;
+  text-align: center;
+  margin-top: -2px;
+}
+
+.upload-phonebook-btn {
+  height: 56px;
+  margin: 0;
+  border-style: solid;
+  border-radius: 12px;
+  color: var(--ink);
+  border-color: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.phonebook-list {
+  margin-top: 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  padding-top: 8px;
+}
+
+.phonebook-header {
+  margin-bottom: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.phonebook-scroll {
+  max-height: 72px;
+}
+
+.phonebook-row {
+  font-size: 11px;
+  border: 1px solid transparent;
+}
+
+.phonebook-row:hover {
+  border-color: rgba(163, 230, 53, 0.2);
+}
+
+.dialer-call-logs-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-height: 0;
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 16px;
+  padding: 10px;
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01));
+}
+
+.dialer-call-logs-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dialer-call-logs-head-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.dialer-call-logs-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: var(--ink);
+}
+
+.dialer-call-logs-sub {
+  font-size: 10px;
+  color: var(--faint);
+}
+
+.dialer-refresh-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.dialer-refresh-btn:hover {
+  color: #8be9ff;
+  border-color: rgba(56, 189, 248, 0.45);
+  background: rgba(56, 189, 248, 0.1);
+}
+
+.dialer-refresh-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.dialer-call-logs-empty {
+  text-align: center;
+  font-size: 11px;
+  color: var(--faint);
+  padding: 14px 10px;
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+}
+
+.dialer-call-logs-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.dialer-call-log-row {
+  width: 100%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--ink);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  text-align: left;
+  cursor: pointer;
+  transition: 0.18s ease;
+}
+
+.dialer-call-log-row:hover {
+  border-color: rgba(163, 230, 53, 0.28);
+  background: rgba(163, 230, 53, 0.08);
+  transform: translateY(-1px);
+}
+
+.dialer-log-badge {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 7px;
+  border-radius: 999px;
+}
+
+.dialer-log-badge.inbound {
+  background: rgba(56, 189, 248, 0.16);
+  color: #8be9ff;
+}
+
+.dialer-log-badge.outbound {
+  background: rgba(34, 197, 94, 0.18);
+  color: #86efac;
+}
+
+.dialer-log-badge.web {
+  background: rgba(167, 139, 250, 0.2);
+  color: #c4b5fd;
+}
+
+.dialer-log-route {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dialer-log-meta {
+  font-size: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.light-mode .iphone-frame {
+  border-color: rgba(15, 23, 42, 0.2);
+  background:
+    radial-gradient(120px 240px at 90% 0%, rgba(56, 189, 248, 0.18), transparent 80%),
+    radial-gradient(180px 240px at 0% 100%, rgba(163, 230, 53, 0.12), transparent 80%),
+    linear-gradient(165deg, #dbe7f1 0%, #bfcdd8 68%);
+}
+
+.light-mode .iphone-screen {
+  border-color: rgba(15, 23, 42, 0.12);
+  background:
+    linear-gradient(160deg, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.55)),
+    radial-gradient(220px 220px at 15% -10%, rgba(56, 189, 248, 0.1), transparent 75%),
+    radial-gradient(240px 220px at 110% 120%, rgba(163, 230, 53, 0.08), transparent 78%),
+    #edf3f9;
+}
+
+.light-mode .dialer-key {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0.65));
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+.light-mode .dialer-call-log-row,
+.light-mode .dialer-call-logs-card,
+.light-mode .upload-phonebook-btn,
+.light-mode .dialer-select,
+.light-mode .dialer-number-input,
+.light-mode .dialer-refresh-btn {
+  border-color: rgba(15, 23, 42, 0.14);
+}
+
+@media (max-width: 1100px) {
+  .agents-layout {
+    align-items: center;
+  }
+}
+
+@media (max-width: 600px) {
+  .iphone-frame {
+    width: min(300px, calc(100vw - 48px));
+    height: auto;
+    aspect-ratio: 300 / 812;
+  }
+
+  .iphone-screen {
+    height: calc(100% - 50px);
+  }
+}
+
+/* Unified icon + list styling across pages */
+.nav-item svg,
+.sub-tab svg,
+.btn svg,
+.voice-filter-btn svg,
+.history-card-action svg,
+.agent-action-btn svg,
+.integration-card svg,
+.upload-zone svg,
+.call-log-row svg,
+.voice-card-action-icon svg {
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 16px;
+  flex-shrink: 0;
+  color: currentColor;
+  opacity: 1;
+  stroke-width: 2;
+}
+
+.sub-tab {
+  min-height: 38px;
+  border: 1px solid transparent;
+}
+
+.sub-tab.active {
+  border-color: rgba(163, 230, 53, 0.24);
+}
+
+.unified-list-header {
+  margin-bottom: 14px;
+}
+
+.unified-list-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--faint);
+}
+
+.unified-list-title svg {
+  color: var(--lime);
+}
+
+.unified-list-grid {
+  gap: 14px;
+}
+
+.unified-list-card {
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.02),
+    0 3px 10px rgba(0, 0, 0, 0.14);
+  transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.unified-list-card:hover {
+  border-color: rgba(163, 230, 53, 0.25);
+  box-shadow:
+    inset 0 0 0 1px rgba(163, 230, 53, 0.07),
+    0 8px 20px rgba(0, 0, 0, 0.22);
+}
+
+.unified-list-card-clickable {
+  cursor: pointer;
+}
+
+.unified-list-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.16), rgba(56, 189, 248, 0.14));
+  color: var(--lime);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.voice-grid.unified-list-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.voice-card.unified-list-card {
+  padding: 14px 16px;
+  align-items: center;
+}
+
+.voice-card-action-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--faint);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.03);
+  margin-left: auto;
+}
+
+.voice-card.unified-list-card:hover .voice-card-action-icon {
+  color: var(--lime);
+  border-color: rgba(163, 230, 53, 0.3);
+  background: rgba(163, 230, 53, 0.1);
+}
+
+.agent-grid.unified-list-grid {
+  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+}
+
+.agent-card.unified-list-card {
+  padding: 16px;
+}
+
+.agent-action-btn svg,
+.history-card-action svg {
+  width: 15px;
+  height: 15px;
+}
+
+.light-mode .unified-list-card {
+  border-color: rgba(15, 23, 42, 0.12);
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.55),
+    0 3px 10px rgba(15, 23, 42, 0.08);
+}
+
+.light-mode .unified-list-icon {
+  border-color: rgba(15, 23, 42, 0.12);
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.2), rgba(56, 189, 248, 0.12));
+}
+
+.light-mode .voice-card-action-icon {
+  border-color: rgba(15, 23, 42, 0.18);
+  background: rgba(15, 23, 42, 0.03);
+}
+
+@media (max-width: 768px) {
+  .sub-tab {
+    min-height: 34px;
+  }
+
+  .voice-card.unified-list-card {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .unified-list-icon {
+    width: 40px;
+    height: 40px;
   }
 }
