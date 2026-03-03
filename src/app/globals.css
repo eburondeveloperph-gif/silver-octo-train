@@ -419,6 +419,7 @@ main.card {
   margin-bottom: 20px;
   overflow-x: auto;
   scrollbar-width: none;
+  flex-shrink: 0;
 }
 .sub-tabs::-webkit-scrollbar { display: none; }
 .sub-tab {
@@ -435,6 +436,9 @@ main.card {
   white-space: nowrap;
   border: none;
   background: none;
+  flex: 1;
+  justify-content: center;
+  min-width: 0;
 }
 .sub-tab:hover {
   color: var(--ink);
@@ -446,6 +450,14 @@ main.card {
 }
 .sub-tab svg {
   color: currentColor;
+  flex-shrink: 0;
+}
+@media (max-width: 768px) {
+  .sub-tab {
+    padding: 7px 12px;
+    font-size: 12px;
+    flex: 0 0 auto;
+  }
 }
 
 /* Section header — consistent across panes */
@@ -2678,6 +2690,7 @@ audio::-webkit-media-controls-time-remaining-display {
 .integration-icon.crm { background: rgba(52, 211, 153, 0.12); color: #34d399; }
 .integration-icon.slack { background: rgba(251, 191, 36, 0.12); color: #fbbf24; }
 .integration-icon.webhook { background: rgba(244, 114, 182, 0.12); color: #f472b6; }
+.integration-icon.phone { background: rgba(56, 189, 248, 0.12); color: #38bdf8; }
 .integration-card-title {
   font-size: 15px;
   font-weight: 600;
@@ -2986,18 +2999,23 @@ audio::-webkit-media-controls-time-remaining-display {
 }
 
 /* ─── Call Logs Fixes ─── */
+.call-logs-table {
+  border: 1px solid var(--stroke);
+  border-radius: 12px;
+  overflow: hidden;
+}
 .call-log-row {
   display: grid;
   grid-template-columns: 1fr auto auto auto;
   align-items: center;
   gap: 16px;
-  padding: 14px 16px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--stroke);
   cursor: pointer;
   transition: background 0.15s;
 }
 .call-log-row:hover {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.025);
 }
 .call-log-row:last-child {
   border-bottom: none;
@@ -3009,11 +3027,13 @@ audio::-webkit-media-controls-time-remaining-display {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: flex;
+  align-items: center;
 }
 .call-log-type {
   font-size: 11px;
   font-weight: 600;
-  padding: 3px 10px;
+  padding: 4px 12px;
   border-radius: 20px;
   text-transform: uppercase;
   letter-spacing: 0.4px;
@@ -3032,13 +3052,111 @@ audio::-webkit-media-controls-time-remaining-display {
   white-space: nowrap;
 }
 .call-log-expanded {
-  padding: 16px;
+  padding: 18px 20px;
   border-bottom: 1px solid var(--stroke);
-  background: rgba(255, 255, 255, 0.01);
+  background: rgba(255, 255, 255, 0.015);
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
+.call-log-expanded:last-child {
+  border-bottom: none;
+}
+
+/* ─── Agent Cards & Templates ─── */
+.agent-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.agent-card {
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 14px;
+  padding: 18px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  position: relative;
+}
+.agent-card:hover {
+  border-color: rgba(163, 230, 53, 0.3);
+}
+.agent-card-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(163, 230, 53, 0.15), rgba(56, 189, 248, 0.1));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--lime);
+}
+.agent-card-info {
+  flex: 1;
+  min-width: 0;
+}
+.agent-card-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.agent-card-id {
+  font-size: 11px;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+.agent-card-actions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.agent-action-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--stroke);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.agent-action-btn:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--ink);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.agent-action-btn.call { color: var(--lime); }
+.agent-action-btn.call:hover { background: rgba(163, 230, 53, 0.1); }
+.agent-action-btn.duplicate { color: #38bdf8; }
+.agent-action-btn.duplicate:hover { background: rgba(56, 189, 248, 0.1); }
+.agent-action-btn.delete { color: var(--faint); }
+.agent-action-btn.delete:hover { color: var(--bad); background: rgba(251, 113, 133, 0.08); }
+.template-badge {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--faint);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
 @media (max-width: 600px) {
   .call-log-row {
     grid-template-columns: 1fr auto;
@@ -3048,6 +3166,9 @@ audio::-webkit-media-controls-time-remaining-display {
     display: none;
   }
   .integrations-grid {
+    grid-template-columns: 1fr;
+  }
+  .agent-grid {
     grid-template-columns: 1fr;
   }
 }

@@ -32,6 +32,9 @@ import {
   FileUp,
   Search,
   SlidersHorizontal,
+  Trash2,
+  Copy as CopyIcon,
+  LayoutGrid,
 } from "lucide-react";
 
 import OrbitCore from "@vapi-ai/web";
@@ -70,6 +73,7 @@ const DEFAULT_AGENT_SKILLS = "You are a helpful customer support agent. You can 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("pane-audio");
   const [audioSubTab, setAudioSubTab] = useState("tts");
+  const [agentSubTab, setAgentSubTab] = useState("my-agents");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [voices, setVoices] = useState<Voice[]>([]);
   const [voiceSearch, setVoiceSearch] = useState("");
@@ -377,6 +381,12 @@ export default function Dashboard() {
     { id: "clone", label: "Voice Cloning", icon: <Copy size={15} /> },
     { id: "voices", label: "Voices", icon: <BookOpen size={15} /> },
     { id: "history", label: "History", icon: <History size={15} /> },
+  ];
+
+  const agentSubTabs = [
+    { id: "my-agents", label: "My Agents", icon: <Users size={15} /> },
+    { id: "templates", label: "Templates", icon: <LayoutGrid size={15} /> },
+    { id: "create", label: "Create Agent", icon: <Phone size={15} /> },
   ];
 
   useEffect(() => {
@@ -917,6 +927,16 @@ export default function Dashboard() {
     });
     return out;
   }, [agentBases]);
+
+  // User-created agents (everything from API except the default template)
+  const userAgents = useMemo(() => {
+    return agentBases.filter((a) => a.id !== DEFAULT_SAMPLE_AGENT.id);
+  }, [agentBases]);
+
+  // Template agents that users can duplicate
+  const templateAgents: { id: string; name?: string }[] = [
+    { ...DEFAULT_SAMPLE_AGENT },
+  ];
 
   const [showUserProfile, setShowUserProfile] = useState(false);
 
@@ -1700,222 +1720,351 @@ export default function Dashboard() {
 
           {activeTab === "pane-agents" && (
             <div className="tab-pane active">
-              <div className="pane-header">
-                <label>Agents</label>
+              {/* Agent sub-tabs */}
+              <div className="sub-tabs">
+                {agentSubTabs.map((st) => (
+                  <button
+                    key={st.id}
+                    className={`sub-tab${agentSubTab === st.id ? " active" : ""}`}
+                    onClick={() => setAgentSubTab(st.id)}
+                  >
+                    {st.icon} {st.label}
+                  </button>
+                ))}
                 <button
                   type="button"
-                  className="btn icon-only"
+                  className="sub-tab"
                   onClick={fetchAgentBases}
                   disabled={isFetchingBases}
                   title="Refresh agents"
+                  style={{ flex: "0 0 auto", padding: "8px 12px" }}
                 >
-                  {isFetchingBases ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                  {isFetchingBases ? <Loader2 size={15} className="animate-spin" /> : <RefreshCw size={15} />}
                 </button>
               </div>
 
-              {/* Phone call / Web call header */}
-              <div className="flex gap-3 mb-6">
-                <div className="flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/5">
-                  <Phone size={20} className="text-lime" />
-                  <span className="font-medium">Phone call</span>
-                  <span className="text-2xs text-muted">Use dialer below</span>
-                </div>
-                <button
-                  type="button"
-                  className="btn primary flex-1 flex items-center justify-center gap-2 px-4 py-3"
-                  onClick={() => {
-                    const agentId = selectedDialerAgentId || displayAgents[0]?.id || DEFAULT_SAMPLE_AGENT.id;
-                    setSelectedDialerAgentId(agentId || "");
-                    handleToggleCall(agentId);
-                  }}
-                  disabled={callStatus === "loading"}
-                >
-                  <Volume2 size={20} />
-                  Web call
-                  <span className="text-2xs opacity-80">Orb & live transcription</span>
-                </button>
-              </div>
               {agentBasesError && (
-                <div className="mb-4 p-3 rounded border border-red-500/50 bg-red-500/10 text-red-200 text-2xs">
+                <div className="mb-4 p-3 rounded-xl border border-red-500/50 bg-red-500/10 text-red-200 text-2xs">
                   {agentBasesError}
                 </div>
               )}
 
-              <div className="agents-layout">
-                {/* iPhone Mockup Dialer */}
-                <div className="iphone-mockup">
-                  <div className="iphone-frame">
-                    <div className="iphone-notch"></div>
-                    <div className="iphone-screen">
-                      <div className="dialer-header">
-                        <span className="dialer-time">Dialer</span>
-                      </div>
-                      <div className="dialer-agent-select">
-                        <label className="text-2xs text-faint">Agent for calls</label>
-                        <select
-                          title="Select agent for calls"
-                          value={selectedDialerAgentId}
-                          onChange={(e) => setSelectedDialerAgentId(e.target.value)}
-                          className="dialer-select"
-                        >
-                          <option value="">Select agent</option>
-                          {displayAgents.map((a) => (
-                            <option key={a.id} value={a.id}>{a.name || a.id}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="dialer-number-display">
-                        <input
-                          type="tel"
-                          placeholder="Enter number"
-                          value={dialerNumber}
-                          onChange={(e) => setDialerNumber(e.target.value.replace(/\D/g, "").slice(0, 15))}
-                          className="dialer-number-input"
-                        />
-                        {dialerNumber && (
-                          <button
-                            type="button"
-                            className="dialer-backspace"
-                            onClick={() => setDialerNumber((n) => n.slice(0, -1))}
-                            title="Backspace"
-                            aria-label="Backspace"
-                          >
-                            ←
-                          </button>
-                        )}
-                      </div>
-                      <div className="dialer-pad">
-                        {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
-                          <button
-                            key={digit}
-                            type="button"
-                            className="dialer-key"
-                            onClick={digit === "0" ? undefined : () => setDialerNumber((n) => (n + digit).slice(0, 15))}
-                            onPointerDown={digit === "0" ? () => handleDialKeyDown(digit) : undefined}
-                            onPointerUp={digit === "0" ? () => handleDialKeyUp(digit) : undefined}
-                            onPointerLeave={digit === "0" ? () => { if (longPress0Ref.current) { clearTimeout(longPress0Ref.current); longPress0Ref.current = null; } } : undefined}
-                          >
-                            {digit === "0" ? (
-                              <span className="dialer-key-0"><span>0</span><span className="dialer-key-plus">+</span></span>
-                            ) : (
-                              digit
-                            )}
-                          </button>
-                        ))}
-                      </div>
-                      <div className="dialer-actions">
-                        <button
-                          className="dialer-call-btn-round"
-                          onClick={async () => {
-                            const num = dialerNumber.replace(/\s/g, "").replace(/[^\d+]/g, "");
-                            if (!num) return;
-                            if (!selectedDialerAgentId) {
-                              setDialerCallStatus("Select an agent first.");
-                              return;
-                            }
-                            setIsDialerCalling(true);
-                            setDialerCallStatus("");
-                            try {
-                              const res = await fetch("/api/orbit/call", {
-                                method: "POST",
-                                headers: { "Content-Type": "application/json" },
-                                body: JSON.stringify({ assistantId: selectedDialerAgentId, customerNumber: num }),
-                              });
-                              const data = await res.json();
-                              if (!res.ok) throw new Error(data?.error || "Outbound call failed");
-                              setDialerCallStatus("Call initiated. Calling the number.");
-                              fetchCallLogs();
-                            } catch (err) {
-                              setDialerCallStatus("Error: " + (err instanceof Error ? err.message : "Call failed"));
-                            } finally {
-                              setIsDialerCalling(false);
-                            }
-                          }}
-                          disabled={!dialerNumber.trim() || isDialerCalling}
-                        >
-                          {isDialerCalling ? <Loader2 size={24} className="animate-spin" /> : <Phone size={24} />}
-                        </button>
-                        {dialerCallStatus && (
-                          <span className={`text-2xs block mt-1 ${dialerCallStatus.startsWith("Error") ? "text-bad" : "text-muted"}`}>
-                            {dialerCallStatus}
-                          </span>
-                        )}
-                        <label className="upload-phonebook-btn">
-                          <Upload size={14} />
-                          Upload phonebook
-                          <input
-                            type="file"
-                            accept=".csv,.txt"
-                            onChange={handleBulkPhonebookUpload}
-                            hidden
-                          />
-                        </label>
-                      </div>
-                      {phonebookEntries.length > 0 && (
-                        <div className="phonebook-list">
-                          <div className="phonebook-header text-2xs text-faint">{phonebookEntries.length} contacts</div>
-                          <div className="phonebook-scroll">
-                            {phonebookEntries.slice(0, 8).map((p, i) => (
-                              <div
-                                key={i}
-                                className="phonebook-row"
-                                onClick={() => setDialerNumber(p.number)}
-                              >
-                                <span>{p.name}</span>
-                                <span className="text-lime">{p.number}</span>
-                              </div>
-                            ))}
+              {/* My Agents sub-tab */}
+              {agentSubTab === "my-agents" && (
+                <>
+                  <div className="voice-section-header">
+                    <span>My Agents</span>
+                    <span className="voice-count">{userAgents.length}</span>
+                  </div>
+                  {userAgents.length === 0 && !isFetchingBases ? (
+                    <div className="placeholder-pane h-32 flex items-center justify-center text-muted">
+                      No agents yet. Create one in the &ldquo;Create Agent&rdquo; tab or duplicate a template.
+                    </div>
+                  ) : (
+                    <div className="agent-grid">
+                      {userAgents.map((a) => (
+                        <div key={a.id} className="agent-card">
+                          <div className="agent-card-avatar">
+                            <Users size={20} />
+                          </div>
+                          <div className="agent-card-info">
+                            <div className="agent-card-name">{a.name || "Unnamed Agent"}</div>
+                            <div className="agent-card-id">{a.id}</div>
+                          </div>
+                          <div className="agent-card-actions">
+                            <button
+                              className="agent-action-btn call"
+                              onClick={() => handleToggleCall(a.id)}
+                              disabled={callStatus === "loading" || (callStatus === "active" && activeAgentId !== a.id)}
+                              title="Test call"
+                            >
+                              {callStatus === "loading" && activeAgentId === a.id ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
+                            </button>
+                            <button
+                              className="agent-action-btn delete"
+                              onClick={async () => {
+                                if (!confirm(`Delete agent "${a.name || a.id}"?`)) return;
+                                try {
+                                  await fetch(`/api/orbit/assistants/${a.id}`, { method: "DELETE" });
+                                  fetchAgentBases();
+                                } catch { /* ignore */ }
+                              }}
+                              title="Delete agent"
+                            >
+                              <Trash2 size={14} />
+                            </button>
                           </div>
                         </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Active Call Status */}
+                  <div className="mt-6">
+                    <div className="voice-section-header">
+                      <span>Active Call</span>
+                    </div>
+                    <div className={`placeholder-pane h-20 text-2xs ${callStatus === "active" ? "border-lime" : ""}`}>
+                      {callStatus === "active" ? (
+                        <div className="flex flex-col items-center gap-2">
+                          <div className="status-dot ok animate-pulse"></div>
+                          <div className="text-lime">Session Active: {activeAgentId}</div>
+                        </div>
+                      ) : (
+                        "No active call. Use Test Call on an agent or create one."
                       )}
                     </div>
                   </div>
-                </div>
+                </>
+              )}
 
-                {/* Create Agent Form */}
-                <div className="create-agent-form">
-                  <h3 className="create-agent-title">Create My Agent</h3>
-                  <div className="field">
-                    <label>Agent Name</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Customer Support Bot"
-                      value={newAgentName}
-                      onChange={(e) => setNewAgentName(e.target.value)}
-                    />
+              {/* Templates sub-tab */}
+              {agentSubTab === "templates" && (
+                <>
+                  <div className="voice-section-header">
+                    <span>Agent Templates</span>
+                    <span className="voice-count">{templateAgents.length}</span>
                   </div>
-                  <div className="field">
-                    <label>Voice</label>
-                    <select
-                      title="Select voice for agent"
-                      value={agentVoice}
-                      onChange={(e) => setAgentVoice(e.target.value)}
-                      className="w-full"
-                    >
-                      <optgroup label="Built-in voices">
-                        <option value="vapi:elliot">Elliot</option>
-                        <option value="vapi:savannah">Savannah</option>
-                      </optgroup>
-                      <optgroup label="Custom / Cloned">
-                        {voices.length === 0 ? (
-                          <option value="11labs:EXAVITQu4vr4xnSDxMaL" disabled>Loading voices…</option>
-                        ) : (
-                          voices.map((v) => (
-                            <option key={v.voice_id} value={`11labs:${v.voice_id}`}>
-                              {v.name}{v.labels?.cloned === "true" ? " (cloned)" : ""}
-                            </option>
-                          ))
-                        )}
-                      </optgroup>
-                    </select>
+                  <p className="text-2xs text-muted mb-4">
+                    These are preconfigured agents ready to use. Duplicate a template to create your own customized version.
+                  </p>
+                  <div className="agent-grid">
+                    {templateAgents.map((a) => (
+                      <div key={a.id} className="agent-card">
+                        <span className="template-badge">Template</span>
+                        <div className="agent-card-avatar">
+                          <Users size={20} />
+                        </div>
+                        <div className="agent-card-info">
+                          <div className="agent-card-name">{a.name || "Unnamed Agent"}</div>
+                          <div className="agent-card-id">{a.id}</div>
+                        </div>
+                        <div className="agent-card-actions">
+                          <button
+                            className="agent-action-btn call"
+                            onClick={() => handleToggleCall(a.id)}
+                            disabled={callStatus === "loading" || (callStatus === "active" && activeAgentId !== a.id)}
+                            title="Test call"
+                          >
+                            {callStatus === "loading" && activeAgentId === a.id ? <Loader2 size={14} className="animate-spin" /> : <Phone size={14} />}
+                          </button>
+                          <button
+                            className="agent-action-btn duplicate"
+                            onClick={() => {
+                              setNewAgentName((a.name || "Agent") + " (Copy)");
+                              setAgentSubTab("create");
+                            }}
+                            title="Duplicate as new agent"
+                          >
+                            <CopyIcon size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div className="field">
-                    <label>Languages Spoken</label>
-                    <select
-                      title="Languages spoken by agent"
-                      value={agentLanguage}
-                      onChange={(e) => setAgentLanguage(e.target.value)}
+                </>
+              )}
+
+              {/* Create Agent sub-tab */}
+              {agentSubTab === "create" && (
+                <>
+                  {/* Phone call / Web call header */}
+                  <div className="flex gap-3 mb-6">
+                    <div className="flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/5">
+                      <Phone size={20} className="text-lime" />
+                      <span className="font-medium">Phone call</span>
+                      <span className="text-2xs text-muted">Use dialer below</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn primary flex-1 flex items-center justify-center gap-2 px-4 py-3"
+                      onClick={() => {
+                        const agentId = selectedDialerAgentId || displayAgents[0]?.id || DEFAULT_SAMPLE_AGENT.id;
+                        setSelectedDialerAgentId(agentId || "");
+                        handleToggleCall(agentId);
+                      }}
+                      disabled={callStatus === "loading"}
                     >
+                      <Volume2 size={20} />
+                      Web call
+                      <span className="text-2xs opacity-80">Orb & live transcription</span>
+                    </button>
+                  </div>
+
+                  <div className="agents-layout">
+                    {/* iPhone Mockup Dialer */}
+                    <div className="iphone-mockup">
+                      <div className="iphone-frame">
+                        <div className="iphone-notch"></div>
+                        <div className="iphone-screen">
+                          <div className="dialer-header">
+                            <span className="dialer-time">Dialer</span>
+                          </div>
+                          <div className="dialer-agent-select">
+                            <label className="text-2xs text-faint">Agent for calls</label>
+                            <select
+                              title="Select agent for calls"
+                              value={selectedDialerAgentId}
+                              onChange={(e) => setSelectedDialerAgentId(e.target.value)}
+                              className="dialer-select"
+                            >
+                              <option value="">Select agent</option>
+                              {displayAgents.map((a) => (
+                                <option key={a.id} value={a.id}>{a.name || a.id}</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="dialer-number-display">
+                            <input
+                              type="tel"
+                              placeholder="Enter number"
+                              value={dialerNumber}
+                              onChange={(e) => setDialerNumber(e.target.value.replace(/\D/g, "").slice(0, 15))}
+                              className="dialer-number-input"
+                            />
+                            {dialerNumber && (
+                              <button
+                                type="button"
+                                className="dialer-backspace"
+                                onClick={() => setDialerNumber((n) => n.slice(0, -1))}
+                                title="Backspace"
+                                aria-label="Backspace"
+                              >
+                                ←
+                              </button>
+                            )}
+                          </div>
+                          <div className="dialer-pad">
+                            {["1", "2", "3", "4", "5", "6", "7", "8", "9", "*", "0", "#"].map((digit) => (
+                              <button
+                                key={digit}
+                                type="button"
+                                className="dialer-key"
+                                onClick={digit === "0" ? undefined : () => setDialerNumber((n) => (n + digit).slice(0, 15))}
+                                onPointerDown={digit === "0" ? () => handleDialKeyDown(digit) : undefined}
+                                onPointerUp={digit === "0" ? () => handleDialKeyUp(digit) : undefined}
+                                onPointerLeave={digit === "0" ? () => { if (longPress0Ref.current) { clearTimeout(longPress0Ref.current); longPress0Ref.current = null; } } : undefined}
+                              >
+                                {digit === "0" ? (
+                                  <span className="dialer-key-0"><span>0</span><span className="dialer-key-plus">+</span></span>
+                                ) : (
+                                  digit
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="dialer-actions">
+                            <button
+                              className="dialer-call-btn-round"
+                              onClick={async () => {
+                                const num = dialerNumber.replace(/\s/g, "").replace(/[^\d+]/g, "");
+                                if (!num) return;
+                                if (!selectedDialerAgentId) {
+                                  setDialerCallStatus("Select an agent first.");
+                                  return;
+                                }
+                                setIsDialerCalling(true);
+                                setDialerCallStatus("");
+                                try {
+                                  const res = await fetch("/api/orbit/call", {
+                                    method: "POST",
+                                    headers: { "Content-Type": "application/json" },
+                                    body: JSON.stringify({ assistantId: selectedDialerAgentId, customerNumber: num }),
+                                  });
+                                  const data = await res.json();
+                                  if (!res.ok) throw new Error(data?.error || "Outbound call failed");
+                                  setDialerCallStatus("Call initiated. Calling the number.");
+                                  fetchCallLogs();
+                                } catch (err) {
+                                  setDialerCallStatus("Error: " + (err instanceof Error ? err.message : "Call failed"));
+                                } finally {
+                                  setIsDialerCalling(false);
+                                }
+                              }}
+                              disabled={!dialerNumber.trim() || isDialerCalling}
+                            >
+                              {isDialerCalling ? <Loader2 size={24} className="animate-spin" /> : <Phone size={24} />}
+                            </button>
+                            {dialerCallStatus && (
+                              <span className={`text-2xs block mt-1 ${dialerCallStatus.startsWith("Error") ? "text-bad" : "text-muted"}`}>
+                                {dialerCallStatus}
+                              </span>
+                            )}
+                            <label className="upload-phonebook-btn">
+                              <Upload size={14} />
+                              Upload phonebook
+                              <input
+                                type="file"
+                                accept=".csv,.txt"
+                                onChange={handleBulkPhonebookUpload}
+                                hidden
+                              />
+                            </label>
+                          </div>
+                          {phonebookEntries.length > 0 && (
+                            <div className="phonebook-list">
+                              <div className="phonebook-header text-2xs text-faint">{phonebookEntries.length} contacts</div>
+                              <div className="phonebook-scroll">
+                                {phonebookEntries.slice(0, 8).map((p, i) => (
+                                  <div
+                                    key={i}
+                                    className="phonebook-row"
+                                    onClick={() => setDialerNumber(p.number)}
+                                  >
+                                    <span>{p.name}</span>
+                                    <span className="text-lime">{p.number}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Create Agent Form */}
+                    <div className="create-agent-form">
+                      <h3 className="create-agent-title">Create My Agent</h3>
+                      <div className="field">
+                        <label>Agent Name</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. Customer Support Bot"
+                          value={newAgentName}
+                          onChange={(e) => setNewAgentName(e.target.value)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label>Voice</label>
+                        <select
+                          title="Select voice for agent"
+                          value={agentVoice}
+                          onChange={(e) => setAgentVoice(e.target.value)}
+                          className="w-full"
+                        >
+                          <optgroup label="Built-in voices">
+                            <option value="vapi:elliot">Elliot</option>
+                            <option value="vapi:savannah">Savannah</option>
+                          </optgroup>
+                          <optgroup label="Custom / Cloned">
+                            {voices.length === 0 ? (
+                              <option value="11labs:EXAVITQu4vr4xnSDxMaL" disabled>Loading voices…</option>
+                            ) : (
+                              voices.map((v) => (
+                                <option key={v.voice_id} value={`11labs:${v.voice_id}`}>
+                                  {v.name}{v.labels?.cloned === "true" ? " (cloned)" : ""}
+                                </option>
+                              ))
+                            )}
+                          </optgroup>
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label>Languages Spoken</label>
+                        <select
+                          title="Languages spoken by agent"
+                          value={agentLanguage}
+                          onChange={(e) => setAgentLanguage(e.target.value)}
+                        >
                       <option value="multilingual">Multilingual</option>
                       <option value="en">English</option>
                       <option value="en-US">English (US)</option>
@@ -2030,54 +2179,8 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="mt-6">
-                <label className="mb-3 block">Available Agents ({displayAgents.length})</label>
-                <div className="grid grid-2">
-                  {displayAgents.map((a) => (
-                    <div key={a.id} className="card p-5 flex flex-col items-center text-center transition-all group relative overflow-hidden hover:border-lime">
-                      <div className="w-12 h-12 rounded-full bg-limeDim flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                        <Users size={20} className="text-lime" />
-                      </div>
-                      <div className="font-bold mb-1">{a.name || "Unnamed Assistant"}</div>
-                      <div className="text-2xs text-faint mb-4 truncate w-full">{a.id}</div>
-                      
-                      <div className="flex gap-2 w-full mt-auto">
-                        <button 
-                          className="btn flex-1 text-2xs"
-                          onClick={() => handleToggleCall(a.id)}
-                          disabled={callStatus === "loading" || (callStatus === "active" && activeAgentId !== a.id)}
-                        >
-                          {callStatus === "loading" && activeAgentId === a.id ? (
-                            <Loader2 size={12} className="animate-spin" />
-                          ) : (
-                            "Test Call"
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  {displayAgents.length === 0 && !isFetchingBases && !agentBasesError && (
-                    <div className="placeholder-pane h-20 text-2xs col-span-2">
-                      No agents yet. Create one using the form above or in the&nbsp;
-                      <a href="https://dashboard.vapi.ai" target="_blank" rel="noopener noreferrer" className="text-lime hover:underline">agent dashboard</a>.
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="mt-6">
-                <label className="mb-3 block">Active Call</label>
-                <div className={`placeholder-pane h-32 text-2xs ${callStatus === "active" ? "border-lime" : ""}`}>
-                  {callStatus === "active" ? (
-                    <div className="flex flex-col items-center gap-2">
-                      <div className="status-dot ok animate-pulse"></div>
-                      <div className="text-lime">Session Active: {activeAgentId}</div>
-                    </div>
-                  ) : (
-                    "No active call. Use the dialer or Test Call to start."
-                  )}
-                </div>
-              </div>
+                </>
+              )}
             </div>
           )}
 
@@ -2232,6 +2335,7 @@ export default function Dashboard() {
                   { key: "crm", icon: "🗂", cls: "crm", title: "CRM", provider: "GoHighLevel · HubSpot", desc: "Sync call data, transcripts, and contact info with your CRM automatically.", available: true },
                   { key: "slack", icon: "💬", cls: "slack", title: "Slack", provider: "Slack API", desc: "Get real-time call notifications, summaries, and alerts posted to Slack channels.", available: false },
                   { key: "webhook", icon: "🔗", cls: "webhook", title: "Custom Webhooks", provider: "Zapier · Make · n8n", desc: "Trigger any workflow via webhooks. Connect to thousands of apps through automation platforms.", available: true },
+                  { key: "phone", icon: "📞", cls: "phone", title: "Phone Numbers", provider: "Twilio · Vapi", desc: "Buy and manage phone numbers for inbound and outbound calls. Assign numbers to specific agents.", available: true },
                 ].map((intg) => (
                   <div key={intg.key} className="integration-card">
                     <div className="integration-card-header">
