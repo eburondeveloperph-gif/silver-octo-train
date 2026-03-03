@@ -23,7 +23,10 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronRight,
-  FileText
+  FileText,
+  Maximize2,
+  Minimize2,
+  Pause,
 } from "lucide-react";
 
 import OrbitCore from "@vapi-ai/web";
@@ -72,6 +75,7 @@ export default function Dashboard() {
   const [isEnhancingExpression, setIsEnhancingExpression] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [callStatus, setCallStatus] = useState<"idle" | "loading" | "active">("idle");
   const [activeAgentId, setActiveAgentId] = useState("");
@@ -254,6 +258,20 @@ export default function Dashboard() {
     document.body.classList.toggle("light-mode", isLight);
   };
 
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(() => {});
+    } else {
+      document.exitFullscreen().then(() => setIsFullscreen(false)).catch(() => {});
+    }
+  }, []);
+
+  useEffect(() => {
+    const handler = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", handler);
+    return () => document.removeEventListener("fullscreenchange", handler);
+  }, []);
+
   const fetchRealTimeHistory = useCallback(async () => {
     if (!user) {
       setHistory([]);
@@ -341,7 +359,7 @@ export default function Dashboard() {
     { id: "pane-stt", label: "Speech To Text", icon: <Mic size={18} />, desc: "Transcribe audio to text effortlessly" },
     { id: "pane-clone", label: "Voice Cloning", icon: <Copy size={18} />, desc: "Instantly clone voices with full metadata tagging" },
     { id: "pane-agents", label: "Conversational", icon: <Users size={18} />, desc: "Create and connect to AI agents" },
-    { id: "pane-call-logs", label: "Call Logs", icon: <Phone size={18} />, desc: "All call history" },
+    { id: "pane-call-logs", label: "Call History", icon: <Phone size={18} />, desc: "Playback and transcripts for all calls" },
     { id: "pane-history", label: "History", icon: <History size={18} />, desc: "View and play past synthesized audio" },
     { id: "pane-voices", label: "Voices", icon: <BookOpen size={18} />, desc: "Manage your voice library" },
     { id: "pane-docs", label: "Docs", icon: <FileText size={18} />, desc: "API documentation and test inbound" },
@@ -1170,9 +1188,18 @@ export default function Dashboard() {
             <h1>{activeItem?.label}</h1>
             <small>{activeItem?.desc}</small>
           </div>
-          <button className="btn" onClick={() => setIsModalOpen(true)} title="Configuration">
-            <Key size={14} className="mr-2" /> <span className="text-lime">Configured</span>
-          </button>
+          <div className="header-actions">
+            <button className="btn" onClick={() => setIsModalOpen(true)} title="Configuration">
+              <Key size={14} className="mr-2" /> <span className="text-lime">Configured</span>
+            </button>
+            <button
+              className="btn icon-only"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? "Exit fullscreen" : "Fullscreen"}
+            >
+              {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            </button>
+          </div>
         </div>
 
         <div className="cardBody">
@@ -1804,7 +1831,7 @@ export default function Dashboard() {
           {activeTab === "pane-call-logs" && (
             <div className="tab-pane active">
               <div className="flex flex-wrap justify-between items-center gap-4 mb-4">
-                <label className="block">Call Logs</label>
+                <label className="block">Call History</label>
                 <div className="flex flex-wrap items-center gap-3">
                   <select
                     value={callLogFilterType}
@@ -1840,26 +1867,31 @@ export default function Dashboard() {
                 </div>
               </div>
               {callLogPlaybackError && (
-                <div className="mb-4 p-3 rounded border border-red-500/50 bg-red-500/10 text-red-200 text-2xs">
+                <div className="mb-4 p-3 rounded-xl border border-red-500/50 bg-red-500/10 text-red-200 text-2xs">
                   {callLogPlaybackError}
                 </div>
               )}
               {callLogRecordingUrl && (
-                <div className="mb-4 p-3 rounded border border-border bg-panel flex items-center gap-3">
-                  <audio
-                    ref={callLogAudioRef}
-                    src={callLogRecordingUrl}
-                    controls
-                    className="flex-1 h-8"
-                    onEnded={() => { setPlayingCallLogId(null); setCallLogRecordingUrl(null); }}
-                  />
-                  <span className="text-2xs text-muted">Call playback</span>
+                <div className="call-history-player mb-4">
+                  <div className="call-history-player-inner">
+                    <div className="call-history-player-label">
+                      <Volume2 size={16} className="text-lime" />
+                      <span>Now playing</span>
+                    </div>
+                    <audio
+                      ref={callLogAudioRef}
+                      src={callLogRecordingUrl}
+                      controls
+                      className="flex-1"
+                      onEnded={() => { setPlayingCallLogId(null); setCallLogRecordingUrl(null); }}
+                    />
+                  </div>
                 </div>
               )}
               <div className="call-logs-table">
                 {isCallLogsLoading && callLogs.length === 0 ? (
                   <div className="placeholder-pane h-32 flex items-center justify-center text-muted">
-                    Loading call logs…
+                    Loading call history…
                   </div>
                 ) : (() => {
                   const filtered = callLogFilterType === "all"
@@ -1882,15 +1914,16 @@ export default function Dashboard() {
                       {filtered.map((c) => {
                         const { from, to } = getCallFromTo(c);
                         const isExpanded = expandedCallLogId === c.id;
+                        const isPlaying = playingCallLogId === c.id;
                         return (
-                          <div key={c.id} className="call-log-row-wrapper">
-                            <div className="call-log-row">
+                          <div key={c.id} className={`call-log-row-wrapper ${isExpanded ? "expanded" : ""}`}>
+                            <div className={`call-log-row ${isPlaying ? "playing" : ""}`}>
                               <span className="call-log-expand">
                                 <button
                                   type="button"
                                   className="action-btn p-1"
                                   onClick={() => handleExpandCallLog(c.id)}
-                                  title={isExpanded ? "Collapse transcript" : "Expand transcript"}
+                                  title={isExpanded ? "Hide transcript" : "Show transcript"}
                                   aria-label={isExpanded ? "Collapse" : "Expand"}
                                 >
                                   {isExpanded ? (
@@ -1901,7 +1934,9 @@ export default function Dashboard() {
                                 </button>
                               </span>
                               <span className="call-log-type">
-                                {c.type === "webCall" ? "Web" : c.type === "outboundPhoneCall" ? "Outbound" : c.type === "inboundPhoneCall" ? "Inbound" : c.type ?? "—"}
+                                <span className={`call-type-badge ${c.type === "webCall" ? "web" : c.type === "outboundPhoneCall" ? "outbound" : "inbound"}`}>
+                                  {c.type === "webCall" ? "Web" : c.type === "outboundPhoneCall" ? "Outbound" : c.type === "inboundPhoneCall" ? "Inbound" : c.type ?? "—"}
+                                </span>
                               </span>
                               <span className="call-log-number">{from}</span>
                               <span className="call-log-number">{to}</span>
@@ -1911,17 +1946,21 @@ export default function Dashboard() {
                               <span className="call-log-play">
                                 <button
                                   type="button"
-                                  className={`action-btn ${playingCallLogId === c.id ? "text-lime" : ""}`}
+                                  className={`action-btn ${isPlaying ? "text-lime" : ""}`}
                                   onClick={() => handlePlayCallLog(c.id)}
-                                  title="Play recording"
-                                  aria-label="Play recording"
+                                  title={isPlaying ? "Stop playback" : "Play recording"}
+                                  aria-label={isPlaying ? "Stop" : "Play recording"}
                                 >
-                                  <Play size={16} fill={playingCallLogId === c.id ? "currentColor" : undefined} />
+                                  {isPlaying ? <Pause size={16} /> : <Play size={16} fill={undefined} />}
                                 </button>
                               </span>
                             </div>
                             {isExpanded && (
                               <div className="call-log-transcript">
+                                <div className="call-log-transcript-header">
+                                  <FileText size={14} />
+                                  <span>Transcript</span>
+                                </div>
                                 {isExpandedCallLoading ? (
                                   <div className="flex items-center gap-2 text-muted text-2xs">
                                     <Loader2 size={14} className="animate-spin" />
