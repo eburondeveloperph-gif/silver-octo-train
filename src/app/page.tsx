@@ -1352,7 +1352,7 @@ export default function Dashboard() {
                       onChange={(e) => setTtsText(e.target.value)}
                     ></textarea>
                   </div>
-                  <div className="flex gap-2.5 items-center">
+                  <div className="flex gap-3 items-center">
                     <button
                       className="btn primary"
                       id="btnGenerateTTS"
@@ -1385,7 +1385,7 @@ export default function Dashboard() {
                       onChange={(e) => setSttFile(e.target.files?.[0] || null)}
                     />
                   </div>
-                  <div className="flex gap-2.5 items-center mb-6">
+                  <div className="flex gap-3 items-center mb-6">
                     <button
                       className="btn primary"
                       onClick={handleTranscribe}
@@ -1824,7 +1824,7 @@ export default function Dashboard() {
                     <span>Agent Templates</span>
                     <span className="voice-count">{templateAgents.length}</span>
                   </div>
-                  <p className="text-2xs text-muted mb-4">
+                  <p className="text-2xs text-muted mb-6">
                     These are preconfigured agents ready to use. Duplicate a template to create your own customized version.
                   </p>
                   <div className="agent-grid">
@@ -1868,7 +1868,7 @@ export default function Dashboard() {
               {agentSubTab === "create" && (
                 <>
                   {/* Phone call / Web call header */}
-                  <div className="flex gap-3 mb-6">
+                  <div className="flex gap-4 mb-8">
                     <div className="flex-1 flex items-center gap-2 px-4 py-3 rounded-xl border border-white/10 bg-white/5">
                       <Phone size={20} className="text-lime" />
                       <span className="font-medium">Phone call</span>
@@ -2188,7 +2188,7 @@ export default function Dashboard() {
             <div className="tab-pane active">
               <div className="pane-header">
                 <label>Call History</label>
-                <div className="flex flex-wrap items-center gap-3">
+                <div className="flex flex-wrap items-center gap-4">
                   <select
                     value={callLogFilterType}
                     onChange={(e) => setCallLogFilterType(e.target.value)}
@@ -2380,6 +2380,10 @@ export default function Dashboard() {
 
           {activeTab === "pane-settings" && (
             <div className="tab-pane active">
+              <div className="pane-header">
+                <label>Settings</label>
+              </div>
+              <div className="space-y-6">
               <div className="field">
                 <label>Default Echo Model</label>
                 <select title="Default model for TTS">
@@ -2404,7 +2408,8 @@ export default function Dashboard() {
                 <label>Similarity Boost (TTS)</label>
                 <input type="range" min="0" max="1" step="0.1" defaultValue="0.7" title="Adjust voice similarity" />
               </div>
-              <div className="mt-4">
+              </div>
+              <div className="mt-6">
                 <button className="btn primary" onClick={() => alert("Settings saved locally (Simulated)")}>Save Settings</button>
               </div>
             </div>
