@@ -1848,7 +1848,7 @@ export default function Dashboard() {
                               type="button"
                               className="agent-collapse-toggle"
                               onClick={() => toggleAgentCard(cardId)}
-                              aria-expanded={isExpanded}
+                              aria-expanded={isExpanded ? "true" : "false"}
                               title={isExpanded ? "Collapse details" : "Expand details"}
                             >
                               {isExpanded ? <ChevronDown size={14} className="chevron-toggle" /> : <ChevronRight size={14} className="chevron-toggle" />}
@@ -1920,7 +1920,7 @@ export default function Dashboard() {
                                 type="button"
                                 className="agent-collapse-toggle"
                                 onClick={() => toggleAgentCard(cardId)}
-                                aria-expanded={isExpanded}
+                                aria-expanded={isExpanded ? "true" : "false"}
                                 title={isExpanded ? "Collapse details" : "Expand details"}
                               >
                                 {isExpanded ? <ChevronDown size={14} className="chevron-toggle" /> : <ChevronRight size={14} className="chevron-toggle" />}
