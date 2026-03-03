@@ -35,6 +35,7 @@ import {
   Trash2,
   Copy as CopyIcon,
   LayoutGrid,
+  SquarePen,
 } from "lucide-react";
 
 import OrbitCore from "@vapi-ai/web";
@@ -1013,6 +1014,29 @@ export default function Dashboard() {
 
   const [showUserProfile, setShowUserProfile] = useState(false);
 
+  // API Key generation
+  const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
+  const [apiKeyCopied, setApiKeyCopied] = useState(false);
+
+  const handleGenerateApiKey = useCallback(() => {
+    if (!user?.id) return;
+    const encoded = typeof window !== "undefined"
+      ? btoa(user.id)
+      : Buffer.from(user.id).toString("base64");
+    const key = `EBR-${encoded}`;
+    setGeneratedApiKey(key);
+    setApiKeyCopied(false);
+  }, [user]);
+
+  const handleCopyApiKey = useCallback(async () => {
+    if (!generatedApiKey) return;
+    try {
+      await navigator.clipboard.writeText(generatedApiKey);
+      setApiKeyCopied(true);
+      setTimeout(() => setApiKeyCopied(false), 2000);
+    } catch { /* ignore */ }
+  }, [generatedApiKey]);
+
   const handleEditAgain = useCallback(() => {
     setAgentStatus("");
     loadAgentFormDefaults();
@@ -1351,32 +1375,39 @@ export default function Dashboard() {
               {/* TTS Sub-tab */}
               {audioSubTab === "tts" && (
                 <>
-                  <div className="field">
-                    <label htmlFor="ttsVoiceSelect">Select Voice</label>
-                    <select
-                      id="ttsVoiceSelect"
-                      title="Select a voice for synthesis"
-                      value={selectedVoice}
-                      onChange={(e) => setSelectedVoice(e.target.value)}
-                    >
-                      {voices.length === 0 ? (
-                        <option value="">Loading voices...</option>
-                      ) : (
-                        voices.map((v) => (
-                          <option key={v.voice_id} value={v.voice_id}>
-                            {v.name} {v.labels?.accent ? `(${v.labels.accent})` : ""}
-                          </option>
-                        ))
-                      )}
-                    </select>
-                  </div>
-                  <div className="field flex-1">
-                    <div className="flex flex-wrap justify-between items-center gap-2 mb-1">
+                  <div className="tts-section">
+                    <div className="field">
+                      <label htmlFor="ttsVoiceSelect">Select Voice</label>
+                      <select
+                        id="ttsVoiceSelect"
+                        title="Select a voice for synthesis"
+                        value={selectedVoice}
+                        onChange={(e) => setSelectedVoice(e.target.value)}
+                      >
+                        {voices.length === 0 ? (
+                          <option value="">Loading voices...</option>
+                        ) : (
+                          voices.map((v) => (
+                            <option key={v.voice_id} value={v.voice_id}>
+                              {v.name} {v.labels?.accent ? `(${v.labels.accent})` : ""}
+                            </option>
+                          ))
+                        )}
+                      </select>
+                    </div>
+
+                    <div className="field flex-1">
                       <label htmlFor="ttsText">Text to Synthesize</label>
-                      <div className="flex flex-wrap gap-2">
+                      <textarea
+                        id="ttsText"
+                        placeholder="Write natural speech. Use [pause] to add breaks."
+                        value={ttsText}
+                        onChange={(e) => setTtsText(e.target.value)}
+                      ></textarea>
+                      <div className="tts-toolbar">
                         <button
                           type="button"
-                          className="btn text-2xs"
+                          className="tts-tool-btn"
                           onClick={() => setTtsText(enhanceTextForTTS(ttsText))}
                           title="Symbols only: @ → at, . → dot (emails, URLs)"
                         >
@@ -1384,23 +1415,24 @@ export default function Dashboard() {
                         </button>
                         <button
                           type="button"
-                          className="btn text-2xs text-lime border border-lime/50"
+                          className="tts-tool-btn accent"
                           onClick={() => setTtsText(normalizeForTTS(ttsText))}
                           title="Normalize numbers, currency, phone, abbreviations for speech"
                         >
-                          Normalize for TTS
+                          Normalize
                         </button>
                         <button
                           type="button"
-                          className="btn text-2xs"
+                          className="tts-tool-btn"
                           onClick={() => setTtsText(ttsText + (ttsText.endsWith(" ") ? "" : " ") + BREAK_TAG)}
                           title="Append [pause]"
                         >
-                          Add pause
+                          + Pause
                         </button>
+                        <div className="tts-toolbar-divider" />
                         <button
                           type="button"
-                          className="btn text-2xs"
+                          className="tts-tool-btn"
                           onClick={handleEnhanced}
                           disabled={isEnhancingExpression || !ttsText.trim()}
                           title="Add nuances for natural speech (no brackets)"
@@ -1409,7 +1441,7 @@ export default function Dashboard() {
                         </button>
                         <button
                           type="button"
-                          className="btn text-2xs text-lime border border-lime/50"
+                          className="tts-tool-btn accent"
                           onClick={handleAddExpression}
                           disabled={isEnhancingExpression || !ttsText.trim()}
                           title="Use AI to add expressive tags"
@@ -1418,14 +1450,9 @@ export default function Dashboard() {
                         </button>
                       </div>
                     </div>
-                    <textarea
-                      id="ttsText"
-                      placeholder="Write natural speech. Add pause with [pause]."
-                      value={ttsText}
-                      onChange={(e) => setTtsText(e.target.value)}
-                    ></textarea>
                   </div>
-                  <div className="flex gap-3 items-center">
+
+                  <div className="tts-action-row">
                     <button
                       className="btn primary"
                       id="btnGenerateTTS"
@@ -1439,8 +1466,12 @@ export default function Dashboard() {
                       {ttsStatus}
                     </span>
                   </div>
+
                   <div className="audio-output-container">
-                    <label className="mb-3 block">Audio Output</label>
+                    <div className="audio-output-header">
+                      <Volume2 size={16} className="text-lime" />
+                      <label>Audio Output</label>
+                    </div>
                     <audio id="ttsAudio" controls className="w-full" ref={audioRef}></audio>
                   </div>
                 </>
@@ -1449,36 +1480,40 @@ export default function Dashboard() {
               {/* STT Sub-tab */}
               {audioSubTab === "stt" && (
                 <>
-                  <div className="field">
-                    <label htmlFor="sttFile">Audio File</label>
-                    <input
-                      type="file"
-                      id="sttFile"
-                      accept="audio/*"
-                      onChange={(e) => setSttFile(e.target.files?.[0] || null)}
-                    />
-                  </div>
-                  <div className="flex gap-3 items-center mb-6">
-                    <button
-                      className="btn primary"
-                      onClick={handleTranscribe}
-                      disabled={isTranscribing || !sttFile}
-                    >
-                      {isTranscribing ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
-                      Transcribe Audio
-                    </button>
-                    <span className={`text-xs ${sttStatus.includes("Error") || sttStatus === "Failed" ? "text-bad" : "text-muted"}`}>
-                      {sttStatus}
-                    </span>
-                  </div>
-                  <div className="field flex-1">
-                    <label htmlFor="sttOutput">Transcription Result</label>
-                    <textarea
-                      id="sttOutput"
-                      readOnly
-                      placeholder="Transcription will appear here..."
-                      value={sttOutput}
-                    ></textarea>
+                  <div className="stt-section">
+                    <div className="stt-upload-area">
+                      <div className="field">
+                        <label htmlFor="sttFile">Audio File</label>
+                        <input
+                          type="file"
+                          id="sttFile"
+                          accept="audio/*"
+                          onChange={(e) => setSttFile(e.target.files?.[0] || null)}
+                        />
+                      </div>
+                      <div className="tts-action-row">
+                        <button
+                          className="btn primary"
+                          onClick={handleTranscribe}
+                          disabled={isTranscribing || !sttFile}
+                        >
+                          {isTranscribing ? <Loader2 size={16} className="animate-spin" /> : <Mic size={16} />}
+                          Transcribe Audio
+                        </button>
+                        <span className={`text-xs ${sttStatus.includes("Error") || sttStatus === "Failed" ? "text-bad" : "text-muted"}`}>
+                          {sttStatus}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="field flex-1">
+                      <label htmlFor="sttOutput">Transcription Result</label>
+                      <textarea
+                        id="sttOutput"
+                        readOnly
+                        placeholder="Transcription will appear here..."
+                        value={sttOutput}
+                      ></textarea>
+                    </div>
                   </div>
                 </>
               )}
@@ -1873,12 +1908,25 @@ export default function Dashboard() {
                               <button
                                 className="agent-action-btn duplicate"
                                 onClick={() => {
-                                  setNewAgentName((a.name || "Agent") + " (Copy)");
+                                  setNewAgentName(a.name || "Agent");
                                   setAgentSubTab("create");
                                 }}
-                                title="Duplicate as new agent"
+                                title="Edit agent"
                               >
-                                <CopyIcon size={14} />
+                                <SquarePen size={14} />
+                              </button>
+                              <button
+                                className="agent-action-btn delete"
+                                onClick={async () => {
+                                  if (!confirm(`Delete agent "${a.name || a.id}"?`)) return;
+                                  try {
+                                    await fetch(`/api/orbit/assistants/${a.id}`, { method: "DELETE" });
+                                    fetchAgentBases();
+                                  } catch { /* ignore */ }
+                                }}
+                                title="Delete agent"
+                              >
+                                <Trash2 size={14} />
                               </button>
                             </div>
                           </div>
@@ -1945,25 +1993,12 @@ export default function Dashboard() {
                                 <button
                                   className="agent-action-btn duplicate"
                                   onClick={() => {
-                                    setNewAgentName(a.name || "Agent");
+                                    setNewAgentName((a.name || "Agent") + " (Copy)");
                                     setAgentSubTab("create");
                                   }}
-                                  title="Edit / Duplicate"
+                                  title="Duplicate as new agent"
                                 >
                                   <CopyIcon size={14} />
-                                </button>
-                                <button
-                                  className="agent-action-btn delete"
-                                  onClick={async () => {
-                                    if (!confirm(`Delete agent "${a.name || a.id}"?`)) return;
-                                    try {
-                                      await fetch(`/api/orbit/assistants/${a.id}`, { method: "DELETE" });
-                                      fetchAgentBases();
-                                    } catch { /* ignore */ }
-                                  }}
-                                  title="Delete agent"
-                                >
-                                  <Trash2 size={14} />
                                 </button>
                               </div>
                             </div>
@@ -2261,118 +2296,120 @@ export default function Dashboard() {
                           value={agentLanguage}
                           onChange={(e) => setAgentLanguage(e.target.value)}
                         >
-                      <option value="multilingual">Multilingual</option>
-                      <option value="en">English</option>
-                      <option value="en-US">English (US)</option>
-                      <option value="en-GB">English (UK)</option>
-                      <option value="es">Spanish</option>
-                      <option value="fr">French</option>
-                      <option value="de">German</option>
-                      <option value="it">Italian</option>
-                      <option value="pt">Portuguese</option>
-                      <option value="nl">Dutch</option>
-                      <option value="pl">Polish</option>
-                      <option value="ru">Russian</option>
-                      <option value="ja">Japanese</option>
-                      <option value="zh">Chinese</option>
-                      <option value="ko">Korean</option>
-                      <option value="hi">Hindi</option>
-                      <option value="ar">Arabic</option>
-                      <option value="tr">Turkish</option>
-                      <option value="vi">Vietnamese</option>
-                      <option value="id">Indonesian</option>
-                      <option value="th">Thai</option>
-                      <option value="fil">Filipino</option>
-                      <option value="sv">Swedish</option>
-                      <option value="da">Danish</option>
-                      <option value="fi">Finnish</option>
-                      <option value="no">Norwegian</option>
-                      <option value="cs">Czech</option>
-                      <option value="el">Greek</option>
-                      <option value="he">Hebrew</option>
-                      <option value="hu">Hungarian</option>
-                      <option value="ro">Romanian</option>
-                      <option value="uk">Ukrainian</option>
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label>Intro Spiel (first message)</label>
-                    <textarea
-                      placeholder="Hi! I'm your assistant. How can I help you today?"
-                      value={agentIntroSpiel}
-                      onChange={(e) => setAgentIntroSpiel(e.target.value)}
-                      rows={2}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Skills & Description (system prompt)</label>
-                    <textarea
-                      placeholder="You are a helpful customer support agent. You can answer questions about products, process orders, and handle returns. Be friendly and concise."
-                      value={agentSkillsPrompt}
-                      onChange={(e) => setAgentSkillsPrompt(e.target.value)}
-                      rows={4}
-                    />
-                  </div>
-                  <div className="field">
-                    <label>Knowledge Base Documents</label>
-                    <label className="kb-upload-zone">
-                      <FileUp size={24} className="upload-icon" />
-                      <span className="upload-text">Drop files here or click to upload</span>
-                      <span className="upload-hint">PDF, TXT, DOCX — max 10 MB each</span>
-                      <input
-                        type="file"
-                        multiple
-                        accept=".pdf,.txt,.docx,.doc,.md,.csv"
-                        hidden
-                        onChange={(e) => {
-                          if (e.target.files) {
-                            setKbFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
-                          }
-                          e.target.value = "";
-                        }}
-                      />
-                    </label>
-                    {kbFiles.length > 0 && (
-                      <div className="kb-file-list">
-                        {kbFiles.map((f, i) => (
-                          <div key={`${f.name}-${i}`} className="kb-file-item">
-                            <FileText size={14} />
-                            <span>{f.name}</span>
-                            <span className="file-size">{(f.size / 1024).toFixed(0)} KB</span>
-                            <button
-                              type="button"
-                              className="remove-file"
-                              onClick={() => setKbFiles((prev) => prev.filter((_, j) => j !== i))}
-                              title="Remove file"
-                            >
-                              <X size={14} />
-                            </button>
-                          </div>
-                        ))}
+                          <option value="multilingual">Multilingual</option>
+                          <option value="en">English</option>
+                          <option value="en-US">English (US)</option>
+                          <option value="en-GB">English (UK)</option>
+                          <option value="es">Spanish</option>
+                          <option value="fr">French</option>
+                          <option value="de">German</option>
+                          <option value="it">Italian</option>
+                          <option value="pt">Portuguese</option>
+                          <option value="nl">Dutch</option>
+                          <option value="pl">Polish</option>
+                          <option value="ru">Russian</option>
+                          <option value="ja">Japanese</option>
+                          <option value="zh">Chinese</option>
+                          <option value="ko">Korean</option>
+                          <option value="hi">Hindi</option>
+                          <option value="ar">Arabic</option>
+                          <option value="tr">Turkish</option>
+                          <option value="vi">Vietnamese</option>
+                          <option value="id">Indonesian</option>
+                          <option value="th">Thai</option>
+                          <option value="fil">Filipino</option>
+                          <option value="sv">Swedish</option>
+                          <option value="da">Danish</option>
+                          <option value="fi">Finnish</option>
+                          <option value="no">Norwegian</option>
+                          <option value="cs">Czech</option>
+                          <option value="el">Greek</option>
+                          <option value="he">Hebrew</option>
+                          <option value="hu">Hungarian</option>
+                          <option value="ro">Romanian</option>
+                          <option value="uk">Ukrainian</option>
+                        </select>
                       </div>
-                    )}
-                  </div>
-                  <div className="flex gap-2 mt-2">
-                    <button
-                      className="btn primary flex-1 create-my-agent-btn"
-                      onClick={handleCreateMyAgent}
-                      disabled={isCreatingAgent || !newAgentName.trim()}
-                    >
-                      {isCreatingAgent ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}
-                      Use this agent
-                    </button>
-                    <button
-                      className="btn"
-                      onClick={handleEditAgain}
-                      disabled={isCreatingAgent}
-                    >
-                      Edit again
-                    </button>
-                  </div>
-                  <span className={`text-xs block mt-2 ${agentStatus.startsWith("Error") ? "text-bad" : "text-muted"}`}>
-                    {agentStatus}
-                  </span>
-                </div>
+                      <div className="field">
+                        <label>Intro Spiel (first message)</label>
+                        <textarea
+                          placeholder="Hi! I'm your assistant. How can I help you today?"
+                          value={agentIntroSpiel}
+                          onChange={(e) => setAgentIntroSpiel(e.target.value)}
+                          rows={2}
+                        />
+                      </div>
+                      <div className="field">
+                        <label>Skills & Description (system prompt)</label>
+                        <textarea
+                          placeholder="You are a helpful customer support agent. You can answer questions about products, process orders, and handle returns. Be friendly and concise."
+                          value={agentSkillsPrompt}
+                          onChange={(e) => setAgentSkillsPrompt(e.target.value)}
+                          rows={4}
+                        />
+                      </div>
+                      <div className="field">
+                        <label>Knowledge Base Documents</label>
+                        <label className="kb-upload-zone">
+                          <FileUp size={24} className="upload-icon" />
+                          <span className="upload-text">Drop files here or click to upload</span>
+                          <span className="upload-hint">PDF, TXT, DOCX — max 10 MB each</span>
+                          <input
+                            type="file"
+                            multiple
+                            accept=".pdf,.txt,.docx,.doc,.md,.csv"
+                            hidden
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                setKbFiles((prev) => [...prev, ...Array.from(e.target.files!)]);
+                              }
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                        {kbFiles.length > 0 && (
+                          <div className="kb-file-list">
+                            {kbFiles.map((f, i) => (
+                              <div key={`${f.name}-${i}`} className="kb-file-item">
+                                <FileText size={14} />
+                                <span>{f.name}</span>
+                                <span className="file-size">{(f.size / 1024).toFixed(0)} KB</span>
+                                <button
+                                  type="button"
+                                  className="remove-file"
+                                  onClick={() => setKbFiles((prev) => prev.filter((_, j) => j !== i))}
+                                  title="Remove file"
+                                >
+                                  <X size={14} />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="create-agent-actions">
+                        <button
+                          className="btn primary flex-1 create-my-agent-btn"
+                          onClick={handleCreateMyAgent}
+                          disabled={isCreatingAgent || !newAgentName.trim()}
+                        >
+                          {isCreatingAgent ? <Loader2 size={16} className="animate-spin" /> : <Users size={16} />}
+                          Use this agent
+                        </button>
+                        <button
+                          className="btn"
+                          onClick={handleEditAgain}
+                          disabled={isCreatingAgent}
+                        >
+                          Edit again
+                        </button>
+                      </div>
+                      {agentStatus && (
+                        <span className={`text-xs block ${agentStatus.startsWith("Error") ? "text-bad" : "text-muted"}`}>
+                          {agentStatus}
+                        </span>
+                      )}
+                    </div>
               </div>
 
                 </>
@@ -2572,32 +2609,78 @@ export default function Dashboard() {
 
           {activeTab === "pane-settings" && (
             <div className="tab-pane active">
-              <div className="space-y-6">
-              <div className="field">
-                <label>Default Echo Model</label>
-                <select title="Default model for TTS">
-                  <option>echo_flash_v2.5</option>
-                  <option>echo_multilingual_v2</option>
-                  <option>echo_turbo_v2.5</option>
-                </select>
+              {/* API Key Section */}
+              <div className="settings-section">
+                <div className="settings-section-header">
+                  <Key size={18} className="text-lime" />
+                  <div>
+                    <h3 className="settings-section-title">API Key</h3>
+                    <p className="settings-section-desc">Generate a personal API key for programmatic access.</p>
+                  </div>
+                </div>
+                <div className="api-key-card">
+                  {generatedApiKey ? (
+                    <div className="api-key-display">
+                      <code className="api-key-value">{generatedApiKey}</code>
+                      <button
+                        className="btn text-2xs"
+                        onClick={handleCopyApiKey}
+                        title="Copy to clipboard"
+                      >
+                        {apiKeyCopied ? "Copied!" : <><CopyIcon size={12} /> Copy</>}
+                      </button>
+                    </div>
+                  ) : (
+                    <p className="text-2xs text-muted">No API key generated yet. Click below to create one.</p>
+                  )}
+                  <button
+                    className="btn primary"
+                    onClick={handleGenerateApiKey}
+                  >
+                    <Key size={14} />
+                    {generatedApiKey ? "Regenerate API Key" : "Create API Key"}
+                  </button>
+                  {generatedApiKey && (
+                    <p className="text-2xs text-faint mt-1">Store this key securely. It will not be shown again after leaving this page.</p>
+                  )}
+                </div>
               </div>
-              <div className="field">
-                <label>Output Format</label>
-                <select title="Default audio output format">
-                  <option>mp3_44100_128</option>
-                  <option>wav_44100</option>
-                  <option>pcm_24000</option>
-                </select>
+
+              {/* TTS Settings */}
+              <div className="settings-section">
+                <div className="settings-section-header">
+                  <AudioWaveform size={18} className="text-lime" />
+                  <div>
+                    <h3 className="settings-section-title">TTS Configuration</h3>
+                    <p className="settings-section-desc">Configure default text-to-speech model and output format.</p>
+                  </div>
+                </div>
+                <div className="field">
+                  <label>Default Echo Model</label>
+                  <select title="Default model for TTS">
+                    <option>echo_flash_v2.5</option>
+                    <option>echo_multilingual_v2</option>
+                    <option>echo_turbo_v2.5</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Output Format</label>
+                  <select title="Default audio output format">
+                    <option>mp3_44100_128</option>
+                    <option>wav_44100</option>
+                    <option>pcm_24000</option>
+                  </select>
+                </div>
+                <div className="field">
+                  <label>Stability (TTS)</label>
+                  <input type="range" min="0" max="1" step="0.1" defaultValue="0.5" title="Adjust voice stability" />
+                </div>
+                <div className="field">
+                  <label>Similarity Boost (TTS)</label>
+                  <input type="range" min="0" max="1" step="0.1" defaultValue="0.7" title="Adjust voice similarity" />
+                </div>
               </div>
-              <div className="field">
-                <label>Stability (TTS)</label>
-                <input type="range" min="0" max="1" step="0.1" defaultValue="0.5" title="Adjust voice stability" />
-              </div>
-              <div className="field">
-                <label>Similarity Boost (TTS)</label>
-                <input type="range" min="0" max="1" step="0.1" defaultValue="0.7" title="Adjust voice similarity" />
-              </div>
-              </div>
+
               <div className="mt-6">
                 <button className="btn primary" onClick={() => alert("Settings saved locally (Simulated)")}>Save Settings</button>
               </div>
